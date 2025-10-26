@@ -1,0 +1,33 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'codebeaker-monitor'
+
+scrape_configs:
+  # Prometheus 자체 모니터링
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # CodeBeaker API 서버 (나중에 추가)
+  - job_name: 'codebeaker-api'
+    static_configs:
+      - targets: ['host.docker.internal:8000']
+    metrics_path: '/metrics'
+
+  # CodeBeaker 워커 (나중에 추가)
+  - job_name: 'codebeaker-worker'
+    static_configs:
+      - targets: ['host.docker.internal:8001']
+    metrics_path: '/metrics'
+
+  # PostgreSQL Exporter (선택적)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+
+  # Redis Exporter (선택적)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
