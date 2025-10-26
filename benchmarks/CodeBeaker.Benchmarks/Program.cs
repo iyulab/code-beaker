@@ -1,2 +1,6 @@
-﻿// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
+// CodeBeaker Benchmarks
+// Performance benchmarking suite using BenchmarkDotNet
+// Implementation pending (Week 4)
+
+Console.WriteLine("CodeBeaker Benchmarks");
+Console.WriteLine("Run with: dotnet run -c Release");

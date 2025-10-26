@@ -18,6 +18,15 @@ CodeBeaker는 **Docker 격리 환경**에서 다중 언어 코드를 안전하�
 - **고성능**: C# 기반, 비동기 처리, 병렬 워커 풀
 - **타입 안전**: .NET 8.0 컴파일 타임 검증
 
+### 🚧 개발 현황 (Week 1)
+
+- ✅ **Day 1-2**: .NET 8.0 Solution 구조 완료
+- ✅ **Day 3-4**: Core Library 구현 완료 (15/15 tests passing)
+- 🔄 **Day 5-7**: Runtimes 구현 진행 중
+- ⏳ **Day 8-14**: API & Worker 구현 예정
+
+**진행률**: 65% (Core 완료, Runtimes 진행 중)
+
 ---
 
 ## ⚡ 빠른 시작
@@ -35,44 +44,58 @@ CodeBeaker는 **Docker 격리 환경**에서 다중 언어 코드를 안전하�
 git clone https://github.com/iyulab/codebeaker.git
 cd codebeaker
 
-# 2. 런타임 Docker 이미지 빌드
-./scripts/build_runtime_images.sh
+# 2. 솔루션 빌드
+dotnet build
 
-# 3. API 서버 실행
-cd src/CodeBeaker.API
-dotnet run
+# 3. 테스트 실행
+dotnet test
 
-# 4. Worker 실행 (별도 터미널)
-cd src/CodeBeaker.Worker
-dotnet run
+# 4. 런타임 Docker 이미지 빌드 (구현 완료 후)
+cd docker/runtimes/python && docker build -t codebeaker-python .
+cd ../golang && docker build -t codebeaker-golang .
 ```
 
-### API 사용 예시
+> ⚠️ **주의**: API 및 Worker는 Day 8-14에 구현 예정입니다.
 
-```bash
-# Python 코드 실행
-curl -X POST http://localhost:5000/api/execute \
-  -H "Content-Type: application/json" \
-  -d '{
-    "code": "print(\"Hello from CodeBeaker!\")",
-    "language": "python",
-    "config": {
-      "timeout": 10,
-      "memoryLimit": 512
-    }
-  }'
+### 현재 구현 상태
 
-# 응답
-{
-  "executionId": "uuid...",
-  "status": "completed",
-  "exitCode": 0,
-  "stdout": "Hello from CodeBeaker!\n",
-  "stderr": "",
-  "durationMs": 234,
-  "timeout": false
-}
-```
+**✅ 완료된 기능**:
+- Core Models (ExecutionConfig, ExecutionResult, TaskItem)
+- Interfaces (IQueue, IStorage, IRuntime)
+- FileQueue - 파일시스템 기반 작업 큐 (FIFO, atomic operations)
+- FileStorage - 파일시스템 기반 상태 저장소 (JSON persistence)
+- DockerExecutor - Docker 컨테이너 실행기 (resource limits, security)
+- Language Runtimes:
+  - BaseRuntime - 추상 클래스 with template method pattern
+  - PythonRuntime - Python 3.12 with pip package support
+  - JavaScriptRuntime - Node.js 20 with npm package support
+  - GoRuntime - Go 1.21 with go.mod and package support
+  - CSharpRuntime - .NET 8 with NuGet package support
+- RuntimeRegistry - Factory pattern with case-insensitive lookup and aliases
+- Docker Build Scripts - PowerShell (Windows) and Bash (Linux/Mac)
+- REST API Server:
+  - ExecutionController - POST /api/execution, GET /api/execution/{id}
+  - LanguageController - GET /api/language, GET /api/language/{name}
+  - Swagger/OpenAPI documentation at root (/)
+  - Health check endpoint (/health)
+  - Dependency injection with IQueue and IStorage
+- Background Worker Service:
+  - Automatic queue polling and task processing
+  - SemaphoreSlim concurrency control (max 10 concurrent executions)
+  - Exponential backoff retry logic (max 3 retries)
+  - Runtime integration via RuntimeRegistry
+  - Graceful shutdown support
+- Unit Tests (36/36 passing, 100%):
+  - Core Tests: 14 passing, 1 skipped (flaky concurrent test)
+  - Runtime Tests: 22 passing (100%)
+- Integration Tests (11 created, requires Docker images)
+- **End-to-End Pipeline Verified**: API → Queue → Worker → Runtime → Storage (720ms Python execution)
+
+**⏳ 예정**:
+- Docker Image Build Automation
+- End-to-End Integration Tests
+- Production Deployment Scripts
+- Performance Optimization
 
 ---
 

@@ -25,6 +25,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\CodeBeaker.API\CodeBeaker.API.csproj" />
     <ProjectReference Include="..\..\src\CodeBeaker.Worker\CodeBeaker.Worker.csproj" />
+    <ProjectReference Include="..\..\src\CodeBeaker.Runtimes\CodeBeaker.Runtimes.csproj" />
   </ItemGroup>
 
 </Project>
