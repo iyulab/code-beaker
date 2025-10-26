@@ -8,7 +8,7 @@ public sealed class ExecutionConfig
     /// <summary>
     /// 실행 타임아웃 (초)
     /// </summary>
-    public int Timeout { get; set; } = 5;
+    public int Timeout { get; set; } = 30;
 
     /// <summary>
     /// 메모리 제한 (MB)
@@ -28,7 +28,7 @@ public sealed class ExecutionConfig
     /// <summary>
     /// 파일 시스템 읽기 전용 여부
     /// </summary>
-    public bool ReadOnlyFilesystem { get; set; } = true;
+    public bool ReadOnlyFilesystem { get; set; } = false;
 
     /// <summary>
     /// 환경 변수

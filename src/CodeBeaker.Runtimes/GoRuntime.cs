@@ -11,12 +11,10 @@ public sealed class GoRuntime : BaseRuntime
 
     public override string[] GetRunCommand(string entryPoint, List<string>? packages = null)
     {
-        // Go needs GOCACHE and GOMODCACHE in tmpfs (read-only filesystem)
+        // Go needs GOCACHE and GOMODCACHE in tmpfs
         var baseCommand = "export GOCACHE=/tmp/.cache && " +
                          "export GOMODCACHE=/tmp/.modcache && " +
-                         "mkdir -p /tmp/build && " +
-                         $"cp /workspace/{entryPoint} /tmp/build/ && " +
-                         "cd /tmp/build && ";
+                         "cd /workspace && ";
 
         if (packages != null && packages.Count > 0)
         {
@@ -28,7 +26,7 @@ public sealed class GoRuntime : BaseRuntime
             }
         }
 
-        baseCommand += $"go build -o /tmp/app {entryPoint} && /tmp/app";
+        baseCommand += $"go build -o /workspace/app {entryPoint} && /workspace/app";
 
         return new[] { "sh", "-c", baseCommand };
     }

@@ -11,9 +11,7 @@ public sealed class CSharpRuntime : BaseRuntime
 
     public override string[] GetRunCommand(string entryPoint, List<string>? packages = null)
     {
-        var baseCommand = "mkdir -p /tmp/build && " +
-                         $"cp /workspace/{entryPoint} /tmp/build/ && " +
-                         "cd /tmp/build && " +
+        var baseCommand = "cd /workspace && " +
                          "dotnet new console --force && " +
                          $"cp {entryPoint} Program.cs && ";
 

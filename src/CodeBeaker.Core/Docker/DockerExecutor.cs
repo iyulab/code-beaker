@@ -1,8 +1,8 @@
-using Docker.DotNet;
-using Docker.DotNet.Models;
-using CodeBeaker.Core.Models;
 using System.Diagnostics;
 using System.Text;
+using CodeBeaker.Core.Models;
+using Docker.DotNet;
+using Docker.DotNet.Models;
 
 namespace CodeBeaker.Core.Docker;
 
@@ -168,10 +168,10 @@ public sealed class DockerExecutor
                 $"{Path.GetFullPath(workspaceDir)}:/workspace:rw"
             },
 
-            // Tmpfs for writable temp directory
+            // Tmpfs for writable temp directory (exec needed for Go/C# compilation)
             Tmpfs = new Dictionary<string, string>
             {
-                { "/tmp", "rw,noexec,nosuid,size=100m" }
+                { "/tmp", "rw,nosuid,size=100m" }
             }
         };
 

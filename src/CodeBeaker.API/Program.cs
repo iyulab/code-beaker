@@ -86,3 +86,6 @@ app.Logger.LogInformation("Queue path: {QueuePath}", queuePath);
 app.Logger.LogInformation("Storage path: {StoragePath}", storagePath);
 
 app.Run();
+
+// WebApplicationFactory를 위한 public partial Program 클래스
+public partial class Program { }

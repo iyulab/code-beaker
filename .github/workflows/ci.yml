@@ -1,0 +1,281 @@
+name: CI Pipeline (Unit Tests Only)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  # Job 1: 빌드 및 단위 테스트 (빠른 피드백)
+  build-and-test:
+    name: Build and Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build solution
+      run: dotnet build --no-restore --configuration Release
+
+    - name: Run unit tests
+      run: |
+        dotnet test tests/CodeBeaker.Core.Tests/ \
+          --no-build \
+          --configuration Release \
+          --logger "trx;LogFileName=core-test-results.trx" \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./TestResults
+
+    - name: Run runtime tests
+      run: |
+        dotnet test tests/CodeBeaker.Runtimes.Tests/ \
+          --no-build \
+          --configuration Release \
+          --logger "trx;LogFileName=runtime-test-results.trx" \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./TestResults
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: TestResults/**/*.trx
+
+    - name: Upload coverage reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-reports
+        path: TestResults/**/coverage.cobertura.xml
+
+    - name: Publish code coverage
+      uses: codecov/codecov-action@v4
+      if: always()
+      with:
+        files: ./TestResults/**/coverage.cobertura.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  # Job 2: Docker 이미지 빌드
+  build-docker-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    strategy:
+      matrix:
+        runtime: [python, nodejs, golang, csharp]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ matrix.runtime }}-${{ hashFiles(format('docker/runtimes/{0}/Dockerfile', matrix.runtime)) }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-${{ matrix.runtime }}-
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: docker/runtimes/${{ matrix.runtime }}
+        push: false
+        tags: codebeaker-${{ matrix.runtime }}:latest
+        cache-from: type=local,src=/tmp/.buildx-cache
+        cache-to: type=local,dest=/tmp/.buildx-cache-new,mode=max
+
+    - name: Move cache
+      run: |
+        rm -rf /tmp/.buildx-cache
+        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
+
+  # Job 3: 통합 테스트 (Docker 이미지 사용)
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build-docker-images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Build Docker runtime images
+      run: |
+        docker build -t codebeaker-python:latest docker/runtimes/python
+        docker build -t codebeaker-nodejs:latest docker/runtimes/nodejs
+        docker build -t codebeaker-golang:latest docker/runtimes/golang
+        docker build -t codebeaker-dotnet:latest docker/runtimes/csharp
+
+    - name: Verify Docker images
+      run: docker images | grep codebeaker
+
+    - name: Run integration tests
+      run: |
+        dotnet test tests/CodeBeaker.Integration.Tests/ \
+          --configuration Release \
+          --logger "trx;LogFileName=integration-test-results.trx" \
+          --results-directory ./TestResults
+
+    - name: Upload integration test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: integration-test-results
+        path: TestResults/**/*.trx
+
+  # Job 4: 코드 품질 분석
+  code-quality:
+    name: Code Quality Analysis
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Shallow clones should be disabled for better analysis
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build solution
+      run: dotnet build --no-restore --configuration Release
+
+    - name: Run code analysis
+      run: dotnet format --verify-no-changes --no-restore
+
+  # Job 5: 보안 스캔
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy results to GitHub Security
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  # Job 6: 벤치마크 (선택적)
+  benchmarks:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Run benchmarks
+      run: |
+        dotnet run --project benchmarks/CodeBeaker.Benchmarks/CodeBeaker.Benchmarks.csproj \
+          --configuration Release \
+          --exporters json
+
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: benchmark-results
+        path: BenchmarkDotNet.Artifacts/**/*
+
+  # Job 7: 릴리스 준비 (태그 푸시 시)
+  prepare-release:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    needs: [build-and-test, code-quality, security-scan]
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Build release packages
+      run: |
+        dotnet publish src/CodeBeaker.API/CodeBeaker.API.csproj \
+          --configuration Release \
+          --output ./publish/api
+
+        dotnet publish src/CodeBeaker.Worker/CodeBeaker.Worker.csproj \
+          --configuration Release \
+          --output ./publish/worker
+
+    - name: Create release archive
+      run: |
+        tar -czf codebeaker-${{ github.ref_name }}-linux-x64.tar.gz -C ./publish .
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          codebeaker-${{ github.ref_name }}-linux-x64.tar.gz
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
