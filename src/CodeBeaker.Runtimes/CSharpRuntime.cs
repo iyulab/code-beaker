@@ -11,9 +11,11 @@ public sealed class CSharpRuntime : BaseRuntime
 
     public override string[] GetRunCommand(string entryPoint, List<string>? packages = null)
     {
+        // Create project in subdirectory to avoid overwriting source file
         var baseCommand = "cd /workspace && " +
+                         "mkdir -p proj && cd proj && " +
                          "dotnet new console --force && " +
-                         $"cp {entryPoint} Program.cs && ";
+                         $"cp ../{entryPoint} Program.cs && ";
 
         if (packages != null && packages.Count > 0)
         {
