@@ -31,7 +31,10 @@ public class ApiIntegrationTests : IClassFixture<ApiTestFixture>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
-        content.Should().Be("Healthy");
+
+        // New health check returns JSON with detailed status
+        content.Should().Contain("\"status\"");
+        content.Should().Contain("healthy");
     }
 
     [Fact]
@@ -146,11 +149,19 @@ public class ApiIntegrationTests : IClassFixture<ApiTestFixture>
         var createResponse = await _client.PostAsJsonAsync("/api/execution", request);
         var createResult = await createResponse.Content.ReadFromJsonAsync<ExecuteResponse>();
 
-        // Act
-        var response = await _client.GetAsync($"/api/execution/{createResult!.ExecutionId}");
+        // Wait for execution to complete or timeout
+        HttpResponseMessage? response = null;
+        for (int i = 0; i < 10; i++)
+        {
+            await Task.Delay(500); // Wait 500ms between retries
+            response = await _client.GetAsync($"/api/execution/{createResult!.ExecutionId}");
+            if (response.StatusCode == HttpStatusCode.OK)
+                break;
+        }
 
         // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Should().NotBeNull();
+        response!.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var status = await response.Content.ReadFromJsonAsync<StatusResponse>();
         status.Should().NotBeNull();

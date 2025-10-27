@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Json;
 using CodeBeaker.API.Health;
 using CodeBeaker.API.JsonRpc.Handlers;
 using CodeBeaker.API.Metrics;
@@ -16,7 +17,6 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using Prometheus;
-using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
