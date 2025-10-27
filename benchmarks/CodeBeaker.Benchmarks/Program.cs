@@ -1,6 +1,11 @@
-// CodeBeaker Benchmarks
-// Performance benchmarking suite using BenchmarkDotNet
-// Implementation pending (Week 4)
+using BenchmarkDotNet.Running;
 
-Console.WriteLine("CodeBeaker Benchmarks");
-Console.WriteLine("Run with: dotnet run -c Release");
+namespace CodeBeaker.Benchmarks;
+
+class Program
+{
+    static void Main(string[] args)
+    {
+        BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+    }
+}
