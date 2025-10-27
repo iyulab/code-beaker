@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: codebeaker-config
+  namespace: codebeaker
+  labels:
+    app.kubernetes.io/name: codebeaker
+    app.kubernetes.io/component: config
+data:
+  # Queue configuration
+  QUEUE_TYPE: "filesystem"
+  QUEUE_BASE_DIR: "/data/queue"
+
+  # Storage configuration
+  STORAGE_TYPE: "filesystem"
+  STORAGE_BASE_DIR: "/data/storage"
+
+  # Worker configuration
+  WORKER_CONCURRENCY: "10"
+  WORKER_POLL_INTERVAL_MS: "100"
+  WORKER_MAX_RETRIES: "3"
+
+  # Execution configuration
+  EXECUTION_TIMEOUT_SECONDS: "30"
+  EXECUTION_MEMORY_LIMIT_MB: "512"
+
+  # API configuration
+  ASPNETCORE_URLS: "http://+:5039"
+  ASPNETCORE_ENVIRONMENT: "Production"

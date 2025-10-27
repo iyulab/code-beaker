@@ -1,0 +1,27 @@
+apiVersion: v2
+name: codebeaker
+description: CodeBeaker - Multi-language code execution infrastructure platform
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+  - codebeaker
+  - code-execution
+  - sandbox
+  - docker
+  - runtime
+
+home: https://github.com/iyulab/codebeaker
+sources:
+  - https://github.com/iyulab/codebeaker
+
+maintainers:
+  - name: CodeBeaker Team
+    email: support@example.com
+
+dependencies: []
+
+annotations:
+  category: Infrastructure
+  licenses: MIT

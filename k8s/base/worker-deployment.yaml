@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: codebeaker-worker
+  namespace: codebeaker
+  labels:
+    app.kubernetes.io/name: codebeaker
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/part-of: codebeaker-platform
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: codebeaker
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: codebeaker
+        app.kubernetes.io/component: worker
+        app.kubernetes.io/part-of: codebeaker-platform
+    spec:
+      containers:
+      - name: worker
+        image: codebeaker/worker:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: QUEUE_BASE_DIR
+          value: "/data/queue"
+        - name: STORAGE_BASE_DIR
+          value: "/data/storage"
+        - name: DOCKER_HOST
+          value: "unix:///var/run/docker.sock"
+        envFrom:
+        - configMapRef:
+            name: codebeaker-config
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: docker-sock
+          mountPath: /var/run/docker.sock
+        - name: docker-images
+          mountPath: /var/lib/docker
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: codebeaker-data
+      - name: docker-sock
+        hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+      - name: docker-images
+        persistentVolumeClaim:
+          claimName: codebeaker-docker-images

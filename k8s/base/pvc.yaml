@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: codebeaker-data
+  namespace: codebeaker
+  labels:
+    app.kubernetes.io/name: codebeaker
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteMany  # 여러 Worker Pod가 동시 접근 (FileQueue 공유)
+  resources:
+    requests:
+      storage: 10Gi
+  # storageClassName: standard  # 환경에 맞게 조정
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: codebeaker-docker-images
+  namespace: codebeaker
+  labels:
+    app.kubernetes.io/name: codebeaker
+    app.kubernetes.io/component: runtime
+spec:
+  accessModes:
+    - ReadWriteMany  # Docker 런타임 이미지 공유
+  resources:
+    requests:
+      storage: 5Gi
