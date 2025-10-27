@@ -55,7 +55,10 @@ public sealed class SessionExecuteHandler : IJsonRpcHandler
 
     private sealed class SessionExecuteRequest
     {
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
         public string SessionId { get; set; } = string.Empty;
+
+        [System.Text.Json.Serialization.JsonPropertyName("command")]
         public Command? Command { get; set; }
     }
 }

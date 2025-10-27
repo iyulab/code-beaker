@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CodeBeaker.Core\CodeBeaker.Core.csproj" />
+    <ProjectReference Include="..\CodeBeaker.Commands\CodeBeaker.Commands.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

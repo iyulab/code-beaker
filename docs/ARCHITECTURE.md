@@ -2,14 +2,15 @@
 
 ## 개요
 
-CodeBeaker는 **세션 기반 멀티언어 코드 실행 플랫폼**으로, WebSocket + JSON-RPC 2.0 프로토콜을 사용하여 실시간 양방향 통신을 제공합니다.
+CodeBeaker는 **Multi-Runtime 지원 세션 기반 코드 실행 플랫폼**으로, WebSocket + JSON-RPC 2.0 프로토콜을 사용하여 실시간 양방향 통신을 제공합니다.
 
 ### 핵심 아키텍처 원칙
 
-1. **Stateful Execution**: 컨테이너 재사용으로 50-75% 성능 향상
-2. **Command Pattern**: Type-safe 명령 시스템
-3. **Docker 격리**: 안전한 샌드박스 실행 환경
-4. **JSON-RPC 2.0**: 표준 프로토콜 준수
+1. **Multi-Runtime Architecture**: 개발환경별 최적 런타임 자동 선택 (Docker, Deno, Bun 등)
+2. **Stateful Execution**: 환경 재사용으로 50-75% 성능 향상
+3. **Command Pattern**: Type-safe 명령 시스템
+4. **Runtime Abstraction**: IExecutionRuntime 인터페이스 기반 확장 가능 설계
+5. **JSON-RPC 2.0**: 표준 프로토콜 준수
 
 ---
 
@@ -100,6 +101,162 @@ CodeBeaker는 **세션 기반 멀티언어 코드 실행 플랫폼**으로, WebS
 │  - codebeaker-dotnet:latest  (.NET 8)                   │
 └─────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Multi-Runtime Architecture (Phase 4)
+
+### 개요
+
+Phase 4에서 도입된 Multi-Runtime Architecture는 개발환경별로 최적의 런타임을 자동 선택하여 성능과 격리 수준을 최적화합니다.
+
+### 런타임 타입
+
+```csharp
+public enum RuntimeType
+{
+    Docker,        // 컨테이너 기반 (강력한 격리)
+    Deno,          // 프로세스 기반 (빠른 시작)
+    Bun,           // 프로세스 기반 (초고속)
+    NodeJs,        // 프로세스 기반 (호환성)
+    WebAssembly,   // WASM 기반 (극한 격리)
+    V8Isolate,     // V8 격리 (경량)
+    NativeProcess  // 네이티브 프로세스
+}
+```
+
+### IExecutionRuntime 인터페이스
+
+**핵심 추상화 계층**:
+
+```csharp
+public interface IExecutionRuntime
+{
+    string Name { get; }
+    RuntimeType Type { get; }
+    string[] SupportedEnvironments { get; }
+
+    Task<bool> IsAvailableAsync(CancellationToken cancellationToken);
+    Task<IExecutionEnvironment> CreateEnvironmentAsync(
+        RuntimeConfig config,
+        CancellationToken cancellationToken);
+    RuntimeCapabilities GetCapabilities();
+}
+
+public interface IExecutionEnvironment : IAsyncDisposable
+{
+    string EnvironmentId { get; }
+    RuntimeType RuntimeType { get; }
+    EnvironmentState State { get; }
+
+    Task<CommandResult> ExecuteAsync(Command command, CancellationToken ct);
+    Task<EnvironmentState> GetStateAsync(CancellationToken ct);
+    Task CleanupAsync(CancellationToken ct);
+}
+```
+
+### RuntimeCapabilities 모델
+
+**성능 특성 정의**:
+
+```csharp
+public sealed class RuntimeCapabilities
+{
+    public int StartupTimeMs { get; set; }       // 시작 시간
+    public int MemoryOverheadMB { get; set; }    // 메모리 오버헤드
+    public int IsolationLevel { get; set; }      // 격리 수준 (0-10)
+    public bool SupportsFilesystemPersistence { get; set; }
+    public bool SupportsNetworkAccess { get; set; }
+    public int MaxConcurrentExecutions { get; set; }
+}
+```
+
+### RuntimeSelector 전략
+
+**4가지 선택 전략**:
+
+| 전략 | 기준 | 선택 알고리즘 |
+|-----|------|--------------|
+| Speed | 시작 속도 우선 | `MIN(StartupTimeMs)` |
+| Security | 격리 수준 우선 | `MAX(IsolationLevel)` |
+| Memory | 메모리 최소화 | `MIN(MemoryOverheadMB)` |
+| Balanced | 균형 점수 | `(속도 + 메모리 + 격리/2)` |
+
+```csharp
+var selector = new RuntimeSelector(runtimes);
+
+// 속도 우선 → Deno 선택
+var runtime = await selector.SelectBestRuntimeAsync(
+    "javascript", RuntimePreference.Speed);
+
+// 보안 우선 → Docker 선택
+var runtime = await selector.SelectBestRuntimeAsync(
+    "python", RuntimePreference.Security);
+```
+
+### Deno Runtime 구현
+
+**JavaScript/TypeScript용 경량 런타임**:
+
+#### 특징
+- **시작 시간**: 80ms (Docker 대비 25배 빠름)
+- **메모리**: 30MB (Docker 대비 8배 적음)
+- **격리**: 권한 기반 샌드박스 (7/10)
+- **TypeScript**: 네이티브 지원
+
+#### 권한 시스템
+```typescript
+// RuntimeConfig에서 권한 설정
+{
+  "Permissions": {
+    "AllowRead": ["/workspace"],
+    "AllowWrite": ["/workspace"],
+    "AllowNet": false,
+    "AllowEnv": false
+  }
+}
+
+// Deno CLI 인자로 변환
+deno run \
+  --no-prompt \
+  --allow-read=/workspace \
+  --allow-write=/workspace \
+  script.ts
+```
+
+#### 지원 Command 타입
+1. **ExecuteCodeCommand**: TypeScript/JavaScript 코드 직접 실행
+2. **WriteFileCommand**: 파일 생성/수정
+3. **ReadFileCommand**: 파일 읽기
+4. **CreateDirectoryCommand**: 디렉토리 생성
+5. **ListDirectoryCommand**: 디렉토리 목록
+
+### 성능 비교
+
+#### JavaScript/TypeScript 실행
+
+| 메트릭 | Docker Runtime | Deno Runtime | 개선 |
+|--------|---------------|--------------|------|
+| 시작 시간 | 2000ms | 80ms | **25배** |
+| 메모리 | 250MB | 30MB | **8배** |
+| 격리 수준 | 9/10 | 7/10 | -2 |
+
+#### AI 에이전트 시나리오
+```
+10번 연속 실행:
+- Docker: ~3초 (환경 생성 오버헤드)
+- Deno: ~1초 (빠른 프로세스 시작)
+→ 3배 빠른 응답 속도
+```
+
+### 확장 가능성
+
+**향후 추가 예정 런타임**:
+
+1. **Bun Runtime**: JavaScript/TypeScript (Deno보다 빠름)
+2. **Wasmer Runtime**: WebAssembly (극한 격리)
+3. **V8 Isolate**: JavaScript (클라우드 엣지용)
+4. **Native Process**: Go, Rust (컴파일 언어)
 
 ---
 

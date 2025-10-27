@@ -83,3 +83,8 @@ obj/
 
 # Data directories (for file-based queue/storage)
 data/
+
+# BenchmarkDotNet
+BenchmarkDotNet.Artifacts/
+
+claudedocs/

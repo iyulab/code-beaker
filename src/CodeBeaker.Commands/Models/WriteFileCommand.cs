@@ -31,6 +31,7 @@ public sealed class WriteFileCommand : Command
 /// <summary>
 /// File write modes
 /// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter))]
 public enum FileWriteMode
 {
     Create,

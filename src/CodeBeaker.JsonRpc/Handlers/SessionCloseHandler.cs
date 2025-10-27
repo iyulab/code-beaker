@@ -44,6 +44,7 @@ public sealed class SessionCloseHandler : IJsonRpcHandler
 
     private sealed class SessionCloseRequest
     {
+        [System.Text.Json.Serialization.JsonPropertyName("sessionId")]
         public string SessionId { get; set; } = string.Empty;
     }
 }

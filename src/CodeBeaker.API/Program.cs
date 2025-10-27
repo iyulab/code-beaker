@@ -7,6 +7,9 @@ using CodeBeaker.Core.Sessions;
 using CodeBeaker.Core.Storage;
 using CodeBeaker.JsonRpc;
 using CodeBeaker.JsonRpc.Handlers;
+using CodeBeaker.Runtimes.Bun;
+using CodeBeaker.Runtimes.Deno;
+using CodeBeaker.Runtimes.Docker;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,7 +21,18 @@ var storagePath = builder.Configuration.GetValue<string>("Storage:Path") ?? Path
 // 의존성 주입 설정
 builder.Services.AddSingleton<IQueue>(sp => new FileQueue(queuePath));
 builder.Services.AddSingleton<IStorage>(sp => new FileStorage(storagePath));
-builder.Services.AddSingleton<ISessionManager, SessionManager>();
+
+// Multi-Runtime 등록
+builder.Services.AddSingleton<IExecutionRuntime>(sp => new DockerRuntime());
+builder.Services.AddSingleton<IExecutionRuntime>(sp => new DenoRuntime());
+builder.Services.AddSingleton<IExecutionRuntime>(sp => new BunRuntime());
+
+// SessionManager에 Multi-Runtime 주입
+builder.Services.AddSingleton<ISessionManager>(sp =>
+{
+    var runtimes = sp.GetServices<IExecutionRuntime>();
+    return new SessionManager(runtimes);
+});
 
 // Background services
 builder.Services.AddHostedService<SessionCleanupWorker>();
@@ -152,6 +166,23 @@ app.Logger.LogInformation("CodeBeaker API starting...");
 app.Logger.LogInformation("Queue path: {QueuePath}", queuePath);
 app.Logger.LogInformation("Storage path: {StoragePath}", storagePath);
 app.Logger.LogInformation("WebSocket endpoint: /ws/jsonrpc");
+
+// Multi-Runtime 정보 로그
+var runtimes = app.Services.GetServices<IExecutionRuntime>();
+app.Logger.LogInformation("Registered Runtimes:");
+foreach (var runtime in runtimes)
+{
+    var available = await runtime.IsAvailableAsync();
+    var capabilities = runtime.GetCapabilities();
+    app.Logger.LogInformation(
+        "  - {Name} ({Type}): Available={Available}, Startup={StartupMs}ms, Isolation={Isolation}/10",
+        runtime.Name,
+        runtime.Type,
+        available,
+        capabilities.StartupTimeMs,
+        capabilities.IsolationLevel
+    );
+}
 
 app.Run();
 

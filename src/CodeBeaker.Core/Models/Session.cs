@@ -1,7 +1,9 @@
+using CodeBeaker.Core.Interfaces;
+
 namespace CodeBeaker.Core.Models;
 
 /// <summary>
-/// 실행 세션 (Stateful container)
+/// 실행 세션 (Multi-Runtime 지원)
 /// </summary>
 public sealed class Session
 {
@@ -11,9 +13,24 @@ public sealed class Session
     public string SessionId { get; set; } = string.Empty;
 
     /// <summary>
-    /// 컨테이너 ID
+    /// 컨테이너 ID (Docker runtime일 때만 사용)
     /// </summary>
     public string ContainerId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 환경 ID (모든 runtime에서 사용)
+    /// </summary>
+    public string EnvironmentId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 사용 중인 런타임 타입
+    /// </summary>
+    public RuntimeType RuntimeType { get; set; }
+
+    /// <summary>
+    /// 실행 환경 인스턴스 (내부 사용)
+    /// </summary>
+    internal IExecutionEnvironment? Environment { get; set; }
 
     /// <summary>
     /// 언어

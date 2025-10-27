@@ -1,8 +1,12 @@
 using System.Text.Json;
+using CodeBeaker.Commands.Models;
+using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Core.Sessions;
 using CodeBeaker.JsonRpc;
 using CodeBeaker.JsonRpc.Handlers;
 using CodeBeaker.JsonRpc.Models;
+using CodeBeaker.Runtimes.Deno;
+using Moq;
 using Xunit;
 
 namespace CodeBeaker.Integration.Tests;
@@ -17,7 +21,12 @@ public sealed class SessionJsonRpcTests : IDisposable
 
     public SessionJsonRpcTests()
     {
-        _sessionManager = new SessionManager();
+        // 실제 Docker Runtime과 Deno Runtime 사용
+        var dockerRuntime = new CodeBeaker.Runtimes.Docker.DockerRuntime();
+        var denoRuntime = new DenoRuntime();
+
+        var runtimes = new List<IExecutionRuntime> { dockerRuntime, denoRuntime };
+        _sessionManager = new SessionManager(runtimes);
         _router = new JsonRpcRouter();
 
         // Register session handlers
@@ -296,6 +305,47 @@ public sealed class SessionJsonRpcTests : IDisposable
         Assert.NotNull(response);
         Assert.NotNull(response.Error);
         Assert.Null(response.Result);
+    }
+
+    private Mock<IExecutionRuntime> CreateMockDockerRuntime()
+    {
+        var mock = new Mock<IExecutionRuntime>();
+        mock.Setup(r => r.Name).Returns("docker");
+        mock.Setup(r => r.Type).Returns(RuntimeType.Docker);
+        mock.Setup(r => r.SupportedEnvironments).Returns(new[] { "python", "javascript", "go", "csharp" });
+        mock.Setup(r => r.IsAvailableAsync(It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        mock.Setup(r => r.CreateEnvironmentAsync(It.IsAny<RuntimeConfig>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((RuntimeConfig config, CancellationToken ct) =>
+            {
+                var mockEnv = new Mock<IExecutionEnvironment>();
+                mockEnv.Setup(e => e.EnvironmentId).Returns(Guid.NewGuid().ToString("N"));
+                mockEnv.Setup(e => e.RuntimeType).Returns(RuntimeType.Docker);
+                mockEnv.Setup(e => e.State).Returns(EnvironmentState.Ready);
+                mockEnv.Setup(e => e.ExecuteAsync(It.IsAny<Command>(), It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(new CommandResult
+                    {
+                        Success = true,
+                        Result = "Mock execution",
+                        DurationMs = 100
+                    });
+                mockEnv.Setup(e => e.GetStateAsync(It.IsAny<CancellationToken>())).ReturnsAsync(EnvironmentState.Ready);
+                mockEnv.Setup(e => e.CleanupAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+                mockEnv.Setup(e => e.DisposeAsync()).Returns(ValueTask.CompletedTask);
+                return mockEnv.Object;
+            });
+
+        mock.Setup(r => r.GetCapabilities()).Returns(new RuntimeCapabilities
+        {
+            StartupTimeMs = 2000,
+            MemoryOverheadMB = 250,
+            IsolationLevel = 9,
+            SupportsFilesystemPersistence = true,
+            SupportsNetworkAccess = true,
+            MaxConcurrentExecutions = 50
+        });
+
+        return mock;
     }
 
     public void Dispose()
