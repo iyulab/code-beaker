@@ -280,21 +280,16 @@ dotnet test
 
 ## 📚 문서
 
-### 개발 가이드
-- [**개발자 가이드**](DEV_GUIDE.md) - 로컬 환경 설정 및 개발
-- [**사용자 가이드**](USAGE.md) - API 사용법 및 예제
-
-### Phase 완료 보고서
-- [**Phase 1: JSON-RPC + WebSocket**](docs/PHASE1_COMPLETE.md)
-- [**Phase 2: Custom Commands**](docs/PHASE2_COMPLETE.md)
-- [**Phase 3: Session Management**](docs/PHASE3_COMPLETE.md)
-- [**통합 테스트**](docs/INTEGRATION_TESTS_COMPLETE.md)
-- [**프로덕션 준비**](docs/PRODUCTION_READY.md) ⭐
-
-### 아키텍처 문서
+### 핵심 문서
+- [**사용자 가이드**](docs/USAGE.md) - WebSocket API 사용법 및 예제 ⭐
+- [**프로덕션 준비 가이드**](docs/PRODUCTION_READY.md) - 배포 및 운영 가이드 ⭐
 - [**아키텍처 설계**](docs/ARCHITECTURE.md) - 상세 시스템 설계
-- [**파일시스템 아키텍처**](docs/FILESYSTEM_ARCHITECTURE.md) - 큐/저장소 설계
-- [**C# 마이그레이션**](docs/CSHARP_ARCHITECTURE.md) - Python → C# 전환
+- [**개발 로드맵**](docs/TASKS.md) - Phase 1-3 완료 현황 및 향후 계획
+
+### 개발 과정 문서
+- [**개발 히스토리**](docs/DEVELOPMENT_HISTORY.md) - Phase 1-3 개발 과정
+- [**개발자 가이드**](DEV_GUIDE.md) - 로컬 환경 설정 및 개발
+- [**상세 문서**](docs/archive/) - 연구 문서, Phase 보고서, 마이그레이션 가이드
 
 ---
 
