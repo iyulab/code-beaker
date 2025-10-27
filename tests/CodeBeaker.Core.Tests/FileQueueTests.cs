@@ -110,44 +110,6 @@ public sealed class FileQueueTests : IDisposable
         files.Should().BeEmpty();
     }
 
-    [Fact(Skip = "Flaky timing-sensitive test - move to integration tests")]
-    public async Task ConcurrentWorkers_NoTaskDuplication()
-    {
-        // Arrange - Submit tasks with delays to ensure timestamp ordering
-        var submittedIds = new List<string>();
-        for (int i = 0; i < 10; i++)
-        {
-            var id = await _queue.SubmitTaskAsync($"code{i}", "python", new ExecutionConfig());
-            submittedIds.Add(id);
-            await Task.Delay(100); // Increased delay for better file ordering
-        }
-
-        // Act - Simulate 3 concurrent workers (reduced from 5 for stability)
-        var allProcessed = new System.Collections.Concurrent.ConcurrentBag<string>();
-
-        var tasks = Enumerable.Range(0, 3).Select(async workerId =>
-        {
-            while (true)
-            {
-                var task = await _queue.GetTaskAsync(timeout: 3);
-                if (task == null)
-                {
-                    // Double-check with one more attempt
-                    await Task.Delay(500);
-                    task = await _queue.GetTaskAsync(timeout: 2);
-                    if (task == null) break;
-                }
-
-                allProcessed.Add(task.ExecutionId);
-                await _queue.CompleteTaskAsync(task.ExecutionId);
-            }
-        });
-
-        await Task.WhenAll(tasks);
-
-        // Assert
-        allProcessed.Should().HaveCount(10, "all 10 tasks should be processed");
-        allProcessed.Should().OnlyHaveUniqueItems("no task should be processed twice");
-        allProcessed.Should().BeEquivalentTo(submittedIds, "all submitted tasks should be processed");
-    }
+    // Note: Concurrent worker test moved to CodeBeaker.Integration.Tests.FileQueueConcurrencyTests
+    // Timing-sensitive concurrency tests are more appropriate as integration tests
 }
