@@ -1,7 +1,12 @@
 using System.Reflection;
+using CodeBeaker.API.JsonRpc.Handlers;
+using CodeBeaker.API.WebSocket;
 using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Core.Queue;
+using CodeBeaker.Core.Sessions;
 using CodeBeaker.Core.Storage;
+using CodeBeaker.JsonRpc;
+using CodeBeaker.JsonRpc.Handlers;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +18,46 @@ var storagePath = builder.Configuration.GetValue<string>("Storage:Path") ?? Path
 // 의존성 주입 설정
 builder.Services.AddSingleton<IQueue>(sp => new FileQueue(queuePath));
 builder.Services.AddSingleton<IStorage>(sp => new FileStorage(storagePath));
+builder.Services.AddSingleton<ISessionManager, SessionManager>();
+
+// Background services
+builder.Services.AddHostedService<SessionCleanupWorker>();
+
+// JSON-RPC 설정
+builder.Services.AddSingleton(sp =>
+{
+    var router = new JsonRpcRouter();
+
+    // Register handlers
+    var sessionManager = sp.GetRequiredService<ISessionManager>();
+
+    var handlers = new CodeBeaker.JsonRpc.Interfaces.IJsonRpcHandler[]
+    {
+        new InitializeHandler(),
+        new ExecutionRunHandler(
+            sp.GetRequiredService<IQueue>(),
+            sp.GetRequiredService<IStorage>(),
+            sp.GetRequiredService<ILogger<ExecutionRunHandler>>()
+        ),
+        new ExecutionStatusHandler(
+            sp.GetRequiredService<IStorage>(),
+            sp.GetRequiredService<ILogger<ExecutionStatusHandler>>()
+        ),
+        new LanguageListHandler(),
+        // Session handlers
+        new SessionCreateHandler(sessionManager),
+        new SessionExecuteHandler(sessionManager),
+        new SessionCloseHandler(sessionManager),
+        new SessionListHandler(sessionManager)
+    };
+
+    router.RegisterHandlers(handlers);
+
+    return router;
+});
+
+builder.Services.AddSingleton<WebSocketHandler>();
+builder.Services.AddSingleton<StreamingExecutor>();
 
 // 컨트롤러 추가
 builder.Services.AddControllers();
@@ -75,6 +120,28 @@ if (app.Environment.IsDevelopment())
     app.UseCors("AllowAll");
 }
 
+// WebSocket 설정
+var webSocketOptions = new WebSocketOptions
+{
+    KeepAliveInterval = TimeSpan.FromMinutes(2)
+};
+app.UseWebSockets(webSocketOptions);
+
+// WebSocket endpoint for JSON-RPC
+app.Map("/ws/jsonrpc", async (HttpContext context) =>
+{
+    if (context.WebSockets.IsWebSocketRequest)
+    {
+        var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+        var handler = context.RequestServices.GetRequiredService<WebSocketHandler>();
+        await handler.HandleConnectionAsync(webSocket, context.RequestAborted);
+    }
+    else
+    {
+        context.Response.StatusCode = 400;
+    }
+});
+
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
@@ -84,6 +151,7 @@ app.MapHealthChecks("/health");
 app.Logger.LogInformation("CodeBeaker API starting...");
 app.Logger.LogInformation("Queue path: {QueuePath}", queuePath);
 app.Logger.LogInformation("Storage path: {StoragePath}", storagePath);
+app.Logger.LogInformation("WebSocket endpoint: /ws/jsonrpc");
 
 app.Run();
 

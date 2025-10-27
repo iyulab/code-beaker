@@ -1,3 +1,4 @@
+using CodeBeaker.Commands.Models;
 using CodeBeaker.Core.Docker;
 using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Core.Models;
@@ -97,7 +98,12 @@ public abstract class BaseRuntime : IRuntime
     }
 
     /// <summary>
-    /// 실행 명령어 가져오기 (언어별 구현)
+    /// 실행 명령어 가져오기 (Legacy - 언어별 구현)
     /// </summary>
     public abstract string[] GetRunCommand(string entryPoint, List<string>? packages = null);
+
+    /// <summary>
+    /// 실행 계획 가져오기 (Command 기반 - Phase 2, 언어별 구현)
+    /// </summary>
+    public abstract List<Command> GetExecutionPlan(string code, List<string>? packages = null);
 }

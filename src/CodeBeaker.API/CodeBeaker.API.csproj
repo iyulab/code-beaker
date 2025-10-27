@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CodeBeaker.Core\CodeBeaker.Core.csproj" />
     <ProjectReference Include="..\CodeBeaker.Runtimes\CodeBeaker.Runtimes.csproj" />
+    <ProjectReference Include="..\CodeBeaker.JsonRpc\CodeBeaker.JsonRpc.csproj" />
   </ItemGroup>
 
 </Project>

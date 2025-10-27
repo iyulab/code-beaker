@@ -1,3 +1,4 @@
+using CodeBeaker.Commands.Models;
 using CodeBeaker.Core.Models;
 
 namespace CodeBeaker.Core.Interfaces;
@@ -30,12 +31,20 @@ public interface IRuntime
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 실행 명령어 가져오기
+    /// 실행 명령어 가져오기 (Legacy - 하위 호환성)
     /// </summary>
     /// <param name="entryPoint">엔트리 포인트 파일명</param>
     /// <param name="packages">추가 패키지 목록</param>
     /// <returns>실행 명령어 배열</returns>
     string[] GetRunCommand(string entryPoint, List<string>? packages = null);
+
+    /// <summary>
+    /// 실행 계획 가져오기 (Command 기반 - Phase 2)
+    /// </summary>
+    /// <param name="code">소스 코드</param>
+    /// <param name="packages">추가 패키지 목록</param>
+    /// <returns>실행할 Command 리스트</returns>
+    List<Command> GetExecutionPlan(string code, List<string>? packages = null);
 
     /// <summary>
     /// 작업 디렉토리 설정
