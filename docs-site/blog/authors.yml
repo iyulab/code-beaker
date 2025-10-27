@@ -1,0 +1,17 @@
+caveman:
+  name: Caveman
+  title: Core Contributor
+  url: https://github.com/iyulab-caveman
+  image_url: https://github.com/iyulab-caveman.png
+
+junhyung:
+  name: Junhyung
+  title: Core Contributor
+  url: https://github.com/iujunhyung
+  image_url: https://github.com/iujunhyung.png
+
+iyulab:
+  name: iyulab
+  title: Organization
+  url: https://github.com/iyulab
+  image_url: https://github.com/iyulab.png

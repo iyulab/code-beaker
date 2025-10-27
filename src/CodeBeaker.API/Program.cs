@@ -1,5 +1,7 @@
 using System.Reflection;
+using CodeBeaker.API.Health;
 using CodeBeaker.API.JsonRpc.Handlers;
+using CodeBeaker.API.Metrics;
 using CodeBeaker.API.WebSocket;
 using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Core.Queue;
@@ -10,7 +12,11 @@ using CodeBeaker.JsonRpc.Handlers;
 using CodeBeaker.Runtimes.Bun;
 using CodeBeaker.Runtimes.Deno;
 using CodeBeaker.Runtimes.Docker;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
+using Prometheus;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -118,7 +124,23 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // 헬스체크 추가
-builder.Services.AddHealthChecks();
+builder.Services.AddHealthChecks()
+    .AddCheck<RuntimeHealthCheck>(
+        "runtime",
+        failureStatus: HealthStatus.Degraded,
+        tags: new[] { "ready" })
+    .AddCheck<SessionManagerHealthCheck>(
+        "session_manager",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: new[] { "ready" })
+    .AddCheck<StorageHealthCheck>(
+        "storage",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: new[] { "ready" })
+    .AddCheck<QueueHealthCheck>(
+        "queue",
+        failureStatus: HealthStatus.Degraded,
+        tags: new[] { "ready" });
 
 var app = builder.Build();
 
@@ -159,15 +181,119 @@ app.Map("/ws/jsonrpc", async (HttpContext context) =>
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
-app.MapHealthChecks("/health");
+
+// Kubernetes 스타일 Health Check 엔드포인트
+// Liveness probe - 프로세스가 살아있는지 확인 (간단한 응답)
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false, // 모든 헬스체크 스킵 (기본 liveness만)
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = "healthy",
+            timestamp = DateTimeOffset.UtcNow
+        };
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+    }
+});
+
+// Readiness probe - 트래픽 받을 준비가 되었는지 확인
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString().ToLowerInvariant(),
+            timestamp = DateTimeOffset.UtcNow,
+            duration = report.TotalDuration.TotalMilliseconds,
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString().ToLowerInvariant(),
+                description = e.Value.Description,
+                duration = e.Value.Duration.TotalMilliseconds,
+                data = e.Value.Data
+            })
+        };
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+    }
+});
+
+// Startup probe - 초기 시작 완료 확인 (readiness와 동일하지만 실패 허용도가 높음)
+app.MapHealthChecks("/health/startup", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString().ToLowerInvariant(),
+            timestamp = DateTimeOffset.UtcNow,
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString().ToLowerInvariant()
+            })
+        };
+        await context.Response.WriteAsync(JsonSerializer.Serialize(response));
+    }
+});
+
+// 전체 상태 확인 (디버깅용, 상세 정보 포함)
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString().ToLowerInvariant(),
+            timestamp = DateTimeOffset.UtcNow,
+            duration = report.TotalDuration.TotalMilliseconds,
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString().ToLowerInvariant(),
+                description = e.Value.Description,
+                duration = e.Value.Duration.TotalMilliseconds,
+                exception = e.Value.Exception?.Message,
+                data = e.Value.Data
+            })
+        };
+        await context.Response.WriteAsync(
+            JsonSerializer.Serialize(response, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            }));
+    }
+});
+
+// Prometheus metrics 활성화
+app.UseMetricServer(); // /metrics 엔드포인트
+app.UseHttpMetrics(); // HTTP request metrics
+
+// 초기화 메트릭 기록
+CodeBeakerMetrics.RecordRestart();
+
+// 메모리 메트릭 주기 업데이트 (백그라운드 타이머)
+var metricsTimer = new System.Timers.Timer(TimeSpan.FromSeconds(30));
+metricsTimer.Elapsed += (sender, e) => CodeBeakerMetrics.UpdateMemoryMetrics();
+metricsTimer.Start();
 
 // 시작 로그
 app.Logger.LogInformation("CodeBeaker API starting...");
 app.Logger.LogInformation("Queue path: {QueuePath}", queuePath);
 app.Logger.LogInformation("Storage path: {StoragePath}", storagePath);
 app.Logger.LogInformation("WebSocket endpoint: /ws/jsonrpc");
+app.Logger.LogInformation("Metrics endpoint: /metrics");
 
-// Multi-Runtime 정보 로그
+// Multi-Runtime 정보 로그 및 메트릭 업데이트
 var runtimes = app.Services.GetServices<IExecutionRuntime>();
 app.Logger.LogInformation("Registered Runtimes:");
 foreach (var runtime in runtimes)
@@ -182,6 +308,11 @@ foreach (var runtime in runtimes)
         capabilities.StartupTimeMs,
         capabilities.IsolationLevel
     );
+
+    // 런타임 가용성 메트릭 업데이트
+    CodeBeakerMetrics.RuntimesAvailable
+        .WithLabels(runtime.Type.ToString().ToLowerInvariant())
+        .Set(available ? 1 : 0);
 }
 
 app.Run();

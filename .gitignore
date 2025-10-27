@@ -87,4 +87,11 @@ data/
 # BenchmarkDotNet
 BenchmarkDotNet.Artifacts/
 
+# Docusaurus
+docs-site/node_modules/
+docs-site/build/
+docs-site/.docusaurus/
+docs-site/docs/
+docs-site/.cache-loader
+
 claudedocs/

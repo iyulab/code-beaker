@@ -1,0 +1,74 @@
+.heroBanner {
+  padding: 4rem 0;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.features {
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+  width: 100%;
+}
+
+.contributors {
+  display: flex;
+  align-items: center;
+  padding: 3rem 0;
+  width: 100%;
+  background-color: var(--ifm-color-emphasis-100);
+}
+
+.contributorLinks {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  padding: 2rem 0;
+  width: 100%;
+  background-color: var(--ifm-color-emphasis-200);
+}
+
+.statusBadge {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background-color: var(--ifm-color-primary-lightest);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+
+.statusLabel {
+  font-weight: bold;
+  margin-right: 0.5rem;
+  color: var(--ifm-color-primary-darkest);
+}
+
+.statusValue {
+  color: var(--ifm-color-primary-darker);
+}
+
+.statusDate {
+  color: var(--ifm-color-emphasis-600);
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+@media screen and (max-width: 996px) {
+  .heroBanner {
+    padding: 2rem;
+  }
+}
