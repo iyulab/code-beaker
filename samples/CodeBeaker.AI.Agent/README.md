@@ -1,17 +1,22 @@
 # CodeBeaker AI Agent Sample
 
-> **Phase 12: AI Agent Integration**
+> **Phase 12 & 13: AI Agent Integration + Debug & Improvement**
 >
-> AI 에이전트가 CodeBeaker를 활용하여 자동으로 코드를 작성하고 실행하는 샘플
+> AI 에이전트가 CodeBeaker를 활용하여 자동으로 코드를 작성하고, 디버그하고, 개선하는 샘플
 
 ## 🎯 목적
 
 이 샘플은 AI 에이전트(OpenAI)가 CodeBeaker를 활용하는 방법을 보여줍니다:
 
+### Phase 12: 기본 코딩 워크플로우
 1. **AI 코드 생성**: OpenAI API를 사용하여 요구사항에 맞는 코드 생성
 2. **CodeBeaker 실행**: 생성된 코드를 CodeBeaker에서 안전하게 실행
 3. **결과 검증**: 실행 결과를 확인하고 성공/실패 판단
-4. **점진적 개선**: 에러 발생 시 재시도 및 개선 (향후 구현)
+
+### Phase 13: 디버그 & 개선 워크플로우
+4. **버그 탐지 및 수정**: 의도적 버그 코드 실행 → 에러 분석 → 자동 수정 → 재검증
+5. **Test-Driven Development**: 테스트 생성 → 구현 → 반복적 개선 → 성공
+6. **Unified Diff**: 패치 생성 및 적용으로 변경 사항 추적
 
 ## 📋 요구사항
 
@@ -68,12 +73,27 @@ dotnet run
 
 ### 커스텀 태스크 실행
 
+#### Phase 12: Simple Coding
 ```bash
 # Simple 시나리오
 dotnet run simple "Write a Python function to check if a number is prime"
+```
 
-# JavaScript로 실행
-dotnet run simple-js "Write a JavaScript function to sort an array"
+#### Phase 13: Debug & Fix
+```bash
+# Debug 시나리오 - 버그 코드 자동 수정
+dotnet run debug BugSamples/off_by_one.py
+dotnet run debug BugSamples/logic_error.py
+dotnet run debug BugSamples/type_error.py
+dotnet run debug BugSamples/null_error.py
+```
+
+#### Phase 13: Test-Driven Development
+```bash
+# TDD 시나리오 - 테스트 우선 개발
+dotnet run tdd "Write a function to check if a string is a palindrome"
+dotnet run tdd "Write a function to calculate GCD of two numbers"
+dotnet run tdd "Write a function to find the longest common substring"
 ```
 
 ## 🎬 실행 예시
@@ -133,12 +153,19 @@ print(factorial(10))
 
 ```
 AI Agent
-├── Program.cs                    # 메인 진입점
+├── Program.cs                      # 메인 진입점 (Phase 12 & 13)
 ├── Services/
-│   ├── OpenAIService.cs         # OpenAI API 래퍼
-│   └── CodeBeakerClient.cs      # WebSocket JSON-RPC 클라이언트
+│   ├── OpenAIService.cs           # OpenAI API 래퍼 (확장됨)
+│   └── CodeBeakerClient.cs        # WebSocket JSON-RPC 클라이언트
 ├── Scenarios/
-│   └── SimpleCodingScenario.cs  # 간단한 코딩 시나리오
+│   ├── SimpleCodingScenario.cs    # 간단한 코딩 시나리오 (Phase 12)
+│   ├── DebugFixScenario.cs        # 버그 탐지 및 수정 (Phase 13)
+│   └── TestDrivenScenario.cs      # TDD 워크플로우 (Phase 13)
+├── BugSamples/
+│   ├── off_by_one.py              # Off-by-one 에러 샘플
+│   ├── logic_error.py             # Logic 에러 샘플
+│   ├── type_error.py              # Type 에러 샘플
+│   └── null_error.py              # Null/None 에러 샘플
 └── Models/
     └── JsonRpcMessage.cs        # JSON-RPC 메시지 모델
 ```

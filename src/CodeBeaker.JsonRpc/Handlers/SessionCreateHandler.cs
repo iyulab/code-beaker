@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Core.Models;
 using CodeBeaker.JsonRpc.Interfaces;
@@ -11,6 +12,11 @@ namespace CodeBeaker.JsonRpc.Handlers;
 public sealed class SessionCreateHandler : IJsonRpcHandler
 {
     private readonly ISessionManager _sessionManager;
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        Converters = { new JsonStringEnumConverter() },
+        PropertyNameCaseInsensitive = true
+    };
 
     public string Method => "session.create";
 
@@ -27,7 +33,7 @@ public sealed class SessionCreateHandler : IJsonRpcHandler
         }
 
         var json = JsonSerializer.Serialize(@params);
-        var config = JsonSerializer.Deserialize<SessionConfig>(json);
+        var config = JsonSerializer.Deserialize<SessionConfig>(json, _jsonOptions);
 
         if (config == null || string.IsNullOrWhiteSpace(config.Language))
         {

@@ -1,6 +1,7 @@
 using CodeBeaker.AI.Agent.Services;
 using CodeBeaker.AI.Agent.Scenarios;
 using DotNetEnv;
+using Serilog;
 
 namespace CodeBeaker.AI.Agent;
 
@@ -8,9 +9,15 @@ class Program
 {
     static async Task<int> Main(string[] args)
     {
+        // Configure Serilog
+        Log.Logger = new LoggerConfiguration()
+            .MinimumLevel.Information()
+            .WriteTo.Console()
+            .CreateLogger();
+
         Console.WriteLine("╔═══════════════════════════════════════════════════════════╗");
         Console.WriteLine("║         CodeBeaker AI Agent - Demo Sample                ║");
-        Console.WriteLine("║         Phase 12: AI Agent Integration                   ║");
+        Console.WriteLine("║         Phase 12 & 13: AI Agent + Debug & Fix           ║");
         Console.WriteLine("╚═══════════════════════════════════════════════════════════╝\n");
 
         try
@@ -118,10 +125,41 @@ class Program
                 await simple.RunAsync(task);
                 break;
 
+            case "debug":
+                var debug = new DebugFixScenario(ai, codebeaker);
+                var bugFile = task; // Task argument is file path
+                if (!File.Exists(bugFile))
+                {
+                    Console.WriteLine($"❌ Bug file not found: {bugFile}");
+                    Console.WriteLine("\nAvailable bug samples:");
+                    var samplesDir = Path.Combine(Directory.GetCurrentDirectory(), "BugSamples");
+                    if (Directory.Exists(samplesDir))
+                    {
+                        foreach (var file in Directory.GetFiles(samplesDir, "*.py"))
+                        {
+                            Console.WriteLine($"  - {Path.GetFileName(file)}");
+                        }
+                    }
+                    break;
+                }
+                await debug.RunAsync(bugFile);
+                break;
+
+            case "tdd":
+                var tdd = new TestDrivenScenario(ai, codebeaker);
+                await tdd.RunAsync(task);
+                break;
+
             default:
                 Console.WriteLine($"❌ Unknown scenario type: {scenarioType}");
                 Console.WriteLine("\nAvailable scenarios:");
-                Console.WriteLine("  simple <task>  - Simple coding task");
+                Console.WriteLine("  simple <task>     - Simple coding task");
+                Console.WriteLine("  debug <file>      - Debug & Fix scenario (Phase 13)");
+                Console.WriteLine("  tdd <task>        - Test-Driven Development (Phase 13)");
+                Console.WriteLine("\nExamples:");
+                Console.WriteLine("  dotnet run simple \"Write a function to sort a list\"");
+                Console.WriteLine("  dotnet run debug BugSamples/off_by_one.py");
+                Console.WriteLine("  dotnet run tdd \"Write a function to check if a string is a palindrome\"");
                 break;
         }
     }
@@ -131,6 +169,8 @@ class Program
         return scenarioType switch
         {
             "simple" => "Write a Python function to calculate Fibonacci sequence up to n terms",
+            "debug" => "BugSamples/off_by_one.py",
+            "tdd" => "Write a function to check if a string is a palindrome",
             _ => "Write a Python hello world program"
         };
     }

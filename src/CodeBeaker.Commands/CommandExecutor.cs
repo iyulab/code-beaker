@@ -1,7 +1,10 @@
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using CodeBeaker.Commands.Interfaces;
 using CodeBeaker.Commands.Models;
+using CodeBeaker.Commands.Utilities;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 
@@ -38,6 +41,9 @@ public sealed class CommandExecutor : ICommandExecutor
                 CreateDirectoryCommand mkdir => await ExecuteCreateDirectoryAsync(mkdir, containerId, cancellationToken),
                 CopyFileCommand copy => await ExecuteCopyFileAsync(copy, containerId, cancellationToken),
                 ExecuteShellCommand shell => await ExecuteShellAsync(shell, containerId, cancellationToken),
+                ListFilesCommand listFiles => await ExecuteListFilesAsync(listFiles, containerId, cancellationToken),
+                DiffCommand diff => await ExecuteDiffAsync(diff, containerId, cancellationToken),
+                ApplyPatchCommand applyPatch => await ExecuteApplyPatchAsync(applyPatch, containerId, cancellationToken),
                 _ => throw new NotSupportedException($"Command type {command.Type} not supported")
             };
 
@@ -262,5 +268,313 @@ public sealed class CommandExecutor : ICommandExecutor
         }
 
         return (stdout.ToString(), stderr.ToString());
+    }
+
+    /// <summary>
+    /// Execute ListFilesCommand - Get file tree structure
+    /// Phase 14: Runtime Handlers
+    /// </summary>
+    private async Task<CommandResult> ExecuteListFilesAsync(
+        ListFilesCommand command,
+        string containerId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Build find command for Docker container
+            var findCommand = BuildFindCommand(command);
+
+            var execConfig = new ContainerExecCreateParameters
+            {
+                Cmd = new[] { "sh", "-c", findCommand },
+                AttachStdout = true,
+                AttachStderr = true,
+                WorkingDir = "/workspace"
+            };
+
+            var execResponse = await _docker.Exec.ExecCreateContainerAsync(containerId, execConfig, cancellationToken);
+            using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(execResponse.ID, false, cancellationToken);
+
+            var output = await ReadStreamAsync(stream, cancellationToken);
+
+            if (!string.IsNullOrEmpty(output.Stderr))
+            {
+                return CommandResult.Fail($"Failed to list files: {output.Stderr}");
+            }
+
+            // Parse find output and build tree
+            var tree = ParseFindOutput(output.Stdout, command.Path);
+
+            return CommandResult.Ok(new { tree = tree });
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Fail($"Failed to list files: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Build find command with filters
+    /// </summary>
+    private string BuildFindCommand(ListFilesCommand command)
+    {
+        var parts = new List<string> { "find", command.Path };
+
+        // Add max depth
+        if (!command.Recursive)
+        {
+            parts.Add("-maxdepth 1");
+        }
+        else if (command.MaxDepth > 0)
+        {
+            parts.Add($"-maxdepth {command.MaxDepth}");
+        }
+
+        // Exclude hidden files
+        if (!command.IncludeHidden)
+        {
+            parts.Add(@"-not -path '*/\.*'");
+        }
+
+        // Add pattern filter
+        if (!string.IsNullOrEmpty(command.Pattern))
+        {
+            parts.Add($"-name '{command.Pattern}'");
+        }
+
+        // Output format: type|size|mtime|path
+        parts.Add(@"-printf '%y|%s|%T@|%p\n'");
+
+        return string.Join(" ", parts);
+    }
+
+    /// <summary>
+    /// Parse find output into tree structure
+    /// </summary>
+    private FileTreeNode ParseFindOutput(string output, string rootPath)
+    {
+        var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        var fileMap = new Dictionary<string, FileTreeNode>();
+
+        // Create root node
+        var root = new FileTreeNode
+        {
+            Name = rootPath == "." ? "." : Path.GetFileName(rootPath),
+            Path = rootPath,
+            Type = FileEntryType.Directory,
+            Size = 0,
+            Modified = DateTime.UtcNow,
+            Children = new List<FileTreeNode>()
+        };
+
+        fileMap[rootPath] = root;
+
+        foreach (var line in lines)
+        {
+            var parts = line.Split('|');
+            if (parts.Length != 4) continue;
+
+            var type = parts[0] == "d" ? FileEntryType.Directory : FileEntryType.File;
+            var size = long.TryParse(parts[1], out var s) ? s : 0;
+            var mtimeSeconds = double.TryParse(parts[2], out var mt) ? mt : 0;
+            var path = parts[3];
+
+            var node = new FileTreeNode
+            {
+                Name = Path.GetFileName(path),
+                Path = path,
+                Type = type,
+                Size = size,
+                Modified = DateTimeOffset.FromUnixTimeSeconds((long)mtimeSeconds).DateTime,
+                Children = type == FileEntryType.Directory ? new List<FileTreeNode>() : null
+            };
+
+            fileMap[path] = node;
+
+            // Add to parent's children
+            var parentPath = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(parentPath) && fileMap.TryGetValue(parentPath, out var parent))
+            {
+                parent.Children?.Add(node);
+            }
+        }
+
+        return root;
+    }
+
+    /// <summary>
+    /// Execute DiffCommand - Generate unified diff
+    /// Phase 14: Runtime Handlers
+    /// </summary>
+    private async Task<CommandResult> ExecuteDiffAsync(
+        DiffCommand command,
+        string containerId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            string originalContent;
+            string modifiedContent;
+
+            // Get original content
+            if (!string.IsNullOrEmpty(command.OriginalPath))
+            {
+                var readResult = await ExecuteReadFileAsync(
+                    new ReadFileCommand { Path = command.OriginalPath },
+                    containerId,
+                    cancellationToken);
+
+                if (!readResult.Success)
+                {
+                    return CommandResult.Fail($"Failed to read original file: {readResult.Error}");
+                }
+
+                var resultJson = JsonSerializer.Serialize(readResult.Result);
+                var resultObj = JsonSerializer.Deserialize<JsonElement>(resultJson);
+                originalContent = resultObj.GetProperty("content").GetString() ?? "";
+            }
+            else if (!string.IsNullOrEmpty(command.OriginalContent))
+            {
+                originalContent = command.OriginalContent;
+            }
+            else
+            {
+                return CommandResult.Fail("Either OriginalPath or OriginalContent must be provided");
+            }
+
+            // Get modified content
+            if (!string.IsNullOrEmpty(command.ModifiedPath))
+            {
+                var readResult = await ExecuteReadFileAsync(
+                    new ReadFileCommand { Path = command.ModifiedPath },
+                    containerId,
+                    cancellationToken);
+
+                if (!readResult.Success)
+                {
+                    return CommandResult.Fail($"Failed to read modified file: {readResult.Error}");
+                }
+
+                var resultJson = JsonSerializer.Serialize(readResult.Result);
+                var resultObj = JsonSerializer.Deserialize<JsonElement>(resultJson);
+                modifiedContent = resultObj.GetProperty("content").GetString() ?? "";
+            }
+            else if (!string.IsNullOrEmpty(command.ModifiedContent))
+            {
+                modifiedContent = command.ModifiedContent;
+            }
+            else
+            {
+                return CommandResult.Fail("Either ModifiedPath or ModifiedContent must be provided");
+            }
+
+            // Generate diff using DiffGenerator
+            var diff = DiffGenerator.GenerateUnifiedDiff(
+                originalContent,
+                modifiedContent,
+                command.OriginalPath ?? "original",
+                command.ModifiedPath ?? "modified",
+                command.ContextLines);
+
+            var stats = DiffGenerator.CalculateStats(originalContent, modifiedContent);
+
+            var result = new DiffResult
+            {
+                Diff = diff,
+                AddedLines = stats.added,
+                RemovedLines = stats.removed,
+                ModifiedLines = stats.modified,
+                Identical = string.IsNullOrEmpty(diff)
+            };
+
+            return CommandResult.Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Fail($"Failed to generate diff: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Execute ApplyPatchCommand - Apply unified diff patch
+    /// Phase 14: Runtime Handlers
+    /// </summary>
+    private async Task<CommandResult> ExecuteApplyPatchAsync(
+        ApplyPatchCommand command,
+        string containerId,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Determine target file
+            string targetPath;
+            if (!string.IsNullOrEmpty(command.TargetPath))
+            {
+                targetPath = command.TargetPath;
+            }
+            else
+            {
+                // Extract from patch header
+                var patches = PatchApplicator.ParseUnifiedDiff(command.Patch);
+                if (patches.Count == 0)
+                {
+                    return CommandResult.Fail("No valid patches found in diff");
+                }
+
+                var fileName = patches[0].ModifiedFile;
+                if (command.Strip > 0)
+                {
+                    var parts = fileName.Split('/', '\\');
+                    fileName = string.Join("/", parts.Skip(command.Strip));
+                }
+
+                targetPath = fileName;
+            }
+
+            // Read original content
+            var readResult = await ExecuteReadFileAsync(
+                new ReadFileCommand { Path = targetPath },
+                containerId,
+                cancellationToken);
+
+            if (!readResult.Success)
+            {
+                return CommandResult.Fail($"Target file not found: {targetPath}");
+            }
+
+            var resultJson = JsonSerializer.Serialize(readResult.Result);
+            var resultObj = JsonSerializer.Deserialize<JsonElement>(resultJson);
+            var originalContent = resultObj.GetProperty("content").GetString() ?? "";
+
+            // Apply patch using PatchApplicator
+            var patchResult = PatchApplicator.ApplyPatch(
+                command.Patch,
+                originalContent,
+                command.DryRun);
+
+            // Write modified content if not dry-run and successful
+            if (!command.DryRun && patchResult.Success && !string.IsNullOrEmpty(patchResult.ModifiedContent))
+            {
+                var writeResult = await ExecuteWriteFileAsync(
+                    new WriteFileCommand
+                    {
+                        Path = targetPath,
+                        Content = patchResult.ModifiedContent
+                    },
+                    containerId,
+                    cancellationToken);
+
+                if (!writeResult.Success)
+                {
+                    return CommandResult.Fail($"Failed to write patched file: {writeResult.Error}");
+                }
+            }
+
+            return CommandResult.Ok(patchResult);
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Fail($"Failed to apply patch: {ex.Message}");
+        }
     }
 }

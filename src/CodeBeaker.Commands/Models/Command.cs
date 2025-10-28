@@ -15,6 +15,7 @@ namespace CodeBeaker.Commands.Models;
 [JsonDerivedType(typeof(InstallPackagesCommand), typeDiscriminator: "install_packages")]
 [JsonDerivedType(typeof(ListFilesCommand), typeDiscriminator: "list_files")]
 [JsonDerivedType(typeof(DiffCommand), typeDiscriminator: "diff")]
+[JsonDerivedType(typeof(ApplyPatchCommand), typeDiscriminator: "apply_patch")]
 public abstract class Command
 {
     /// <summary>
