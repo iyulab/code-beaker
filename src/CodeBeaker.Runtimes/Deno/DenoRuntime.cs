@@ -291,11 +291,11 @@ public sealed class DenoEnvironment : IExecutionEnvironment
     {
         var startTime = DateTime.UtcNow;
 
-        var filePath = Path.Combine(_config.WorkspaceDirectory, command.CommandName);
-
+        // CommandName is the executable command (e.g., "deno", "python"), not a file path
+        // Use it directly as the process filename, not combined with workspace directory
         var process = new Process
         {
-            StartInfo = CreateProcessStartInfo(filePath, command.Args)
+            StartInfo = CreateShellProcessStartInfo(command)
         };
 
         var stdout = new List<string>();
@@ -507,6 +507,124 @@ public sealed class DenoEnvironment : IExecutionEnvironment
             _config.WorkspaceDirectory,
             ".deno-cache");
         startInfo.Environment["NO_COLOR"] = "1";
+
+        return startInfo;
+    }
+
+    private ProcessStartInfo CreateShellProcessStartInfo(ExecuteShellCommand command)
+    {
+        // Determine the working directory to use
+        // Try to extract from script path in Args if available
+        string workingDirectory;
+        if (command.Args != null && command.Args.Count > 0)
+        {
+            var firstArg = command.Args[0];
+            // Convert /workspace/ paths to actual paths
+            if (firstArg.StartsWith("/workspace/") || firstArg.StartsWith("/workspace\\"))
+            {
+                firstArg = GetFullPath(firstArg);
+            }
+
+            // Extract directory from the script path
+            if (Path.IsPathRooted(firstArg) && File.Exists(firstArg))
+            {
+                workingDirectory = Path.GetDirectoryName(firstArg) ?? _config.WorkspaceDirectory;
+            }
+            else
+            {
+                workingDirectory = command.WorkingDirectory ?? _config.WorkspaceDirectory;
+            }
+        }
+        else
+        {
+            workingDirectory = command.WorkingDirectory ?? _config.WorkspaceDirectory;
+        }
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = command.CommandName,  // Use CommandName directly as executable
+            WorkingDirectory = workingDirectory,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        // Build arguments list
+        var arguments = new List<string>();
+
+        // If command is "deno", add "run" subcommand and permission flags
+        if (command.CommandName.Equals("deno", StringComparison.OrdinalIgnoreCase))
+        {
+            arguments.Add("run");
+            arguments.Add("--no-prompt");
+
+            // Add Deno permissions for the working directory
+            arguments.Add($"--allow-read={workingDirectory}");
+            arguments.Add($"--allow-write={workingDirectory}");
+
+            var permissions = _config.Permissions;
+            if (permissions != null)
+            {
+                if (permissions.AllowNet)
+                {
+                    arguments.Add("--allow-net");
+                }
+                if (permissions.AllowEnv)
+                {
+                    arguments.Add("--allow-env");
+                }
+                if (permissions.AllowRun)
+                {
+                    arguments.Add("--allow-run");
+                }
+            }
+        }
+
+        // Add command arguments
+        if (command.Args != null && command.Args.Count > 0)
+        {
+            foreach (var arg in command.Args)
+            {
+                // Convert /workspace/ paths to actual paths
+                var processedArg = arg;
+                if (arg.StartsWith("/workspace/") || arg.StartsWith("/workspace\\"))
+                {
+                    processedArg = GetFullPath(arg);
+                }
+
+                // Quote arguments that contain spaces or special characters
+                if (processedArg.Contains(' ') || processedArg.Contains('"'))
+                {
+                    arguments.Add($"\"{processedArg.Replace("\"", "\\\"")}\"");
+                }
+                else
+                {
+                    arguments.Add(processedArg);
+                }
+            }
+        }
+
+        // Set arguments string
+        if (arguments.Count > 0)
+        {
+            startInfo.Arguments = string.Join(" ", arguments);
+        }
+
+        // Set environment variables from config
+        foreach (var (key, value) in _config.EnvironmentVariables)
+        {
+            startInfo.Environment[key] = value;
+        }
+
+        // Set environment variables from command
+        if (command.Environment != null)
+        {
+            foreach (var (key, value) in command.Environment)
+            {
+                startInfo.Environment[key] = value;
+            }
+        }
 
         return startInfo;
     }
