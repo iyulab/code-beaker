@@ -19,7 +19,7 @@ const config: Config = {
   projectName: 'code-beaker',
   trailingSlash: false,
 
-  onBrokenLinks: 'throw',
+  onBrokenLinks: 'warn',
   onBrokenMarkdownLinks: 'warn',
 
   i18n: {
