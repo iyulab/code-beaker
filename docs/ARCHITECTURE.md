@@ -1,6 +1,15 @@
 # CodeBeaker 아키텍처 설계 문서
 
-## 개요
+> ⚠️ **Note**: This document contains legacy architecture information (up to Phase 5).
+>
+> **For v1.0 architecture with Phase 11 security**, see:
+> - [docs-site/docs/architecture.md](../docs-site/docs/architecture.md) - Complete v1.0 architecture
+> - [PHASE11_PRODUCTION_HARDENING_COMPLETE.md](../claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md) - Security architecture
+> - [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md) - Complete documentation index
+
+---
+
+## 개요 (Legacy - up to Phase 5)
 
 CodeBeaker는 **Multi-Runtime 지원 세션 기반 코드 실행 플랫폼**으로, WebSocket + JSON-RPC 2.0 프로토콜을 사용하여 실시간 양방향 통신을 제공합니다.
 
@@ -11,6 +20,8 @@ CodeBeaker는 **Multi-Runtime 지원 세션 기반 코드 실행 플랫폼**으�
 3. **Command Pattern**: Type-safe 명령 시스템
 4. **Runtime Abstraction**: IExecutionRuntime 인터페이스 기반 확장 가능 설계
 5. **JSON-RPC 2.0**: 표준 프로토콜 준수
+
+**v1.0 Update**: Added 5-layer security architecture (Phase 11). See [docs-site/docs/architecture.md](../docs-site/docs/architecture.md) for complete information.
 
 ---
 

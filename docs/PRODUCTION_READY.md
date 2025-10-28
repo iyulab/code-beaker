@@ -1,13 +1,30 @@
 # CodeBeaker 프로덕션 준비 완료 보고서
 
-## 개요
-
-**완료일**: 2025-10-27
-**상태**: ✅ **PRODUCTION READY**
+> ⚠️ **Note**: This document contains legacy production readiness information (Phase 1-3 only).
+>
+> **For v1.0 production deployment**, see:
+> - [DEPLOYMENT_GUIDE_v1.0.md](../DEPLOYMENT_GUIDE_v1.0.md) - Complete deployment guide ⭐
+> - [RELEASE_NOTES_v1.0.md](../RELEASE_NOTES_v1.0.md) - v1.0 release notes ⭐
+> - [docs-site/docs/production.md](../docs-site/docs/production.md) - Production guide with all 11 phases
+> - [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md) - Complete documentation index
 
 ---
 
-## 완료된 Phase 요약
+## 개요 (Legacy - Phase 1-3)
+
+**완료일**: 2025-10-27
+**상태**: ⚠️ **OUTDATED - See v1.0 guides above**
+
+**v1.0 Status**:
+- ✅ All 11 Phases Complete
+- ✅ 147 tests (98.1% pass rate)
+- ✅ Security hardening (5-layer defense)
+- ✅ Package management (npm, pip)
+- ✅ Production ready with comprehensive deployment guide
+
+---
+
+## 완료된 Phase 요약 (Legacy)
 
 ### Phase 1: JSON-RPC + WebSocket ✅
 - JSON-RPC 2.0 프로토콜 구현
@@ -33,6 +50,8 @@
 - Session 핸들러 등록
 - Dependency Injection 설정
 - Background Cleanup Worker
+
+**Note**: Phases 4-11 were completed after this document. See [RELEASE_NOTES_v1.0.md](../RELEASE_NOTES_v1.0.md) for complete v1.0 information.
 
 ---
 

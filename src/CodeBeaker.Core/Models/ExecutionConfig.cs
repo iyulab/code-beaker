@@ -39,4 +39,14 @@ public sealed class ExecutionConfig
     /// 추가 패키지 (언어별 패키지 매니저 사용)
     /// </summary>
     public List<string> Packages { get; set; } = new();
+
+    /// <summary>
+    /// Enable security validation (Phase 11: Production Hardening)
+    /// </summary>
+    public bool EnableSecurityValidation { get; set; } = true;
+
+    /// <summary>
+    /// Enable resource quota enforcement
+    /// </summary>
+    public bool EnableResourceQuotas { get; set; } = true;
 }

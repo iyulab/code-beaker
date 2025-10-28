@@ -518,4 +518,42 @@ public sealed class BunEnvironment : IExecutionEnvironment
     {
         await CleanupAsync();
     }
+
+    /// <summary>
+    /// 네이티브 런타임 리소스 사용량 조회 (제한적)
+    /// Process-based 런타임은 실행 시 임시 프로세스를 생성하므로 정확한 추적이 어려움
+    /// </summary>
+    public Task<ResourceUsage?> GetResourceUsageAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // 현재 .NET 프로세스 자체의 리소스만 조회 가능
+            // Bun 프로세스는 ExecuteAsync 중에만 존재하므로 추적 불가
+            using var currentProcess = Process.GetCurrentProcess();
+
+            var usage = new ResourceUsage
+            {
+                Timestamp = DateTime.UtcNow,
+                MemoryUsageBytes = currentProcess.WorkingSet64,
+                MemoryPeakBytes = currentProcess.PeakWorkingSet64,
+                MemoryUsagePercent = 0, // OS 전체 메모리 대비 계산 필요
+                CpuUsageNanoseconds = currentProcess.TotalProcessorTime.Ticks * 100, // Ticks to nanoseconds
+                CpuUsagePercent = 0, // 실시간 CPU% 계산 복잡
+                CpuThrottledMicroseconds = 0, // Process API에서 제공 안함
+                DiskReadBytes = 0, // Process API에서 제공 안함
+                DiskWriteBytes = 0,
+                DiskUsageBytes = 0,
+                NetworkRxBytes = 0, // Process API에서 제공 안함
+                NetworkTxBytes = 0,
+                ProcessCount = 1, // 현재 프로세스만
+                FileDescriptorCount = currentProcess.HandleCount
+            };
+
+            return Task.FromResult<ResourceUsage?>(usage);
+        }
+        catch
+        {
+            return Task.FromResult<ResourceUsage?>(null);
+        }
+    }
 }

@@ -23,7 +23,8 @@ public sealed class MultiRuntimeSelectionTests : IDisposable
         var denoRuntime = new DenoRuntime();
 
         var runtimes = new List<IExecutionRuntime> { dockerRuntime, denoRuntime };
-        _sessionManager = new SessionManager(runtimes);
+        var sessionStore = new CodeBeaker.Core.Storage.InMemorySessionStore();
+        _sessionManager = new SessionManager(sessionStore, runtimes);
     }
 
     [Fact]

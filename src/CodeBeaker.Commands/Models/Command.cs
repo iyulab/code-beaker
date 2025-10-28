@@ -12,6 +12,7 @@ namespace CodeBeaker.Commands.Models;
 [JsonDerivedType(typeof(CreateDirectoryCommand), typeDiscriminator: "create_dir")]
 [JsonDerivedType(typeof(CopyFileCommand), typeDiscriminator: "copy_file")]
 [JsonDerivedType(typeof(ExecuteShellCommand), typeDiscriminator: "shell")]
+[JsonDerivedType(typeof(InstallPackagesCommand), typeDiscriminator: "install_packages")]
 public abstract class Command
 {
     /// <summary>

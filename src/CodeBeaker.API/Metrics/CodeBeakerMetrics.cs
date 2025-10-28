@@ -134,6 +134,118 @@ public static class CodeBeakerMetrics
         "codebeaker_restart_total",
         "Total number of application restarts");
 
+    // Phase 8: Resource Monitoring Metrics
+    public static readonly Gauge SessionMemoryUsage = Prometheus.Metrics.CreateGauge(
+        "codebeaker_session_memory_usage_bytes",
+        "Session memory usage in bytes",
+        new GaugeConfiguration
+        {
+            LabelNames = new[] { "session_id", "runtime_type" }
+        });
+
+    public static readonly Gauge SessionCpuUsage = Prometheus.Metrics.CreateGauge(
+        "codebeaker_session_cpu_usage_percent",
+        "Session CPU usage percentage",
+        new GaugeConfiguration
+        {
+            LabelNames = new[] { "session_id", "runtime_type" }
+        });
+
+    public static readonly Gauge SessionDiskUsage = Prometheus.Metrics.CreateGauge(
+        "codebeaker_session_disk_usage_bytes",
+        "Session disk usage in bytes",
+        new GaugeConfiguration
+        {
+            LabelNames = new[] { "session_id", "runtime_type" }
+        });
+
+    public static readonly Gauge SessionNetworkRx = Prometheus.Metrics.CreateGauge(
+        "codebeaker_session_network_rx_bytes",
+        "Session network received bytes",
+        new GaugeConfiguration
+        {
+            LabelNames = new[] { "session_id", "runtime_type" }
+        });
+
+    public static readonly Gauge SessionNetworkTx = Prometheus.Metrics.CreateGauge(
+        "codebeaker_session_network_tx_bytes",
+        "Session network transmitted bytes",
+        new GaugeConfiguration
+        {
+            LabelNames = new[] { "session_id", "runtime_type" }
+        });
+
+    public static readonly Counter ResourceViolations = Prometheus.Metrics.CreateCounter(
+        "codebeaker_resource_violations_total",
+        "Total number of resource limit violations",
+        new CounterConfiguration
+        {
+            LabelNames = new[] { "session_id", "resource_type", "severity" }
+        });
+
+    // Phase 8: Cache Metrics
+    public static readonly Counter CacheHits = Prometheus.Metrics.CreateCounter(
+        "codebeaker_cache_hits_total",
+        "Total number of cache hits",
+        new CounterConfiguration
+        {
+            LabelNames = new[] { "cache_type" }
+        });
+
+    public static readonly Counter CacheMisses = Prometheus.Metrics.CreateCounter(
+        "codebeaker_cache_misses_total",
+        "Total number of cache misses",
+        new CounterConfiguration
+        {
+            LabelNames = new[] { "cache_type" }
+        });
+
+    public static readonly Gauge CacheSize = Prometheus.Metrics.CreateGauge(
+        "codebeaker_cache_size",
+        "Current number of items in cache",
+        new GaugeConfiguration
+        {
+            LabelNames = new[] { "cache_type" }
+        });
+
+    public static readonly Gauge CacheHitRate = Prometheus.Metrics.CreateGauge(
+        "codebeaker_cache_hit_rate",
+        "Cache hit rate (0.0 to 1.0)",
+        new GaugeConfiguration
+        {
+            LabelNames = new[] { "cache_type" }
+        });
+
+    // Phase 8: Background Service Health
+    public static readonly Gauge BackgroundServiceHealth = Prometheus.Metrics.CreateGauge(
+        "codebeaker_background_service_health",
+        "Background service health status (1=healthy, 0=unhealthy)",
+        new GaugeConfiguration
+        {
+            LabelNames = new[] { "service_name" }
+        });
+
+    public static readonly Counter BackgroundServiceErrors = Prometheus.Metrics.CreateCounter(
+        "codebeaker_background_service_errors_total",
+        "Total number of background service errors",
+        new CounterConfiguration
+        {
+            LabelNames = new[] { "service_name", "error_type" }
+        });
+
+    // Phase 8: Docker Connection Monitoring
+    public static readonly Gauge DockerConnectionHealth = Prometheus.Metrics.CreateGauge(
+        "codebeaker_docker_connection_health",
+        "Docker daemon connection health (1=connected, 0=disconnected)");
+
+    public static readonly Counter DockerReconnections = Prometheus.Metrics.CreateCounter(
+        "codebeaker_docker_reconnections_total",
+        "Total number of Docker daemon reconnections");
+
+    public static readonly Counter DockerZombieContainersCleanup = Prometheus.Metrics.CreateCounter(
+        "codebeaker_docker_zombie_containers_cleaned_total",
+        "Total number of zombie containers cleaned up");
+
     /// <summary>
     /// 초기화 시 RestartCount 증가
     /// </summary>

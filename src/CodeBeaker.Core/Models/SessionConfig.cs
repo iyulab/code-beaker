@@ -64,4 +64,11 @@ public sealed class SessionConfig
     /// </summary>
     [JsonPropertyName("cpuShares")]
     public long? CpuShares { get; set; }
+
+    /// <summary>
+    /// Security configuration
+    /// Phase 11: Production Hardening
+    /// </summary>
+    [JsonPropertyName("security")]
+    public SecurityConfig Security { get; set; } = new();
 }

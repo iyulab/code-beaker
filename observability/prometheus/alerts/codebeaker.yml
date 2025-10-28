@@ -1,0 +1,163 @@
+# CodeBeaker Alerting Rules (Phase 8)
+groups:
+  - name: codebeaker_performance
+    interval: 30s
+    rules:
+      # High execution duration
+      - alert: HighExecutionDuration
+        expr: histogram_quantile(0.95, rate(codebeaker_execution_duration_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: execution
+        annotations:
+          summary: "High code execution duration detected"
+          description: "95th percentile execution duration is {{ $value }}s (threshold: 10s)"
+
+      # High error rate
+      - alert: HighExecutionErrorRate
+        expr: |
+          (
+            rate(codebeaker_executions_total{status="error"}[5m])
+            /
+            rate(codebeaker_executions_total[5m])
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: execution
+        annotations:
+          summary: "High execution error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 10%)"
+
+  - name: codebeaker_resources
+    interval: 30s
+    rules:
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: codebeaker_memory_usage_bytes > 2147483648  # 2GB
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage detected"
+          description: "Memory usage is {{ $value | humanize1024 }} (threshold: 2GB)"
+
+      # Too many active sessions
+      - alert: TooManyActiveSessions
+        expr: sum(codebeaker_active_sessions) > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: sessions
+        annotations:
+          summary: "High number of active sessions"
+          description: "{{ $value }} active sessions (threshold: 100)"
+
+  - name: codebeaker_cache
+    interval: 30s
+    rules:
+      # Low cache hit rate
+      - alert: LowCacheHitRate
+        expr: codebeaker_cache_hit_rate{cache_type="command_result"} < 0.5
+        for: 10m
+        labels:
+          severity: info
+          component: cache
+        annotations:
+          summary: "Low cache hit rate detected"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 50%)"
+
+  - name: codebeaker_background_services
+    interval: 30s
+    rules:
+      # Background service unhealthy
+      - alert: BackgroundServiceUnhealthy
+        expr: codebeaker_background_service_health == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: background_service
+        annotations:
+          summary: "Background service is unhealthy"
+          description: "Service {{ $labels.service_name }} is not running"
+
+      # Docker connection lost
+      - alert: DockerConnectionLost
+        expr: codebeaker_docker_connection_health == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: docker
+        annotations:
+          summary: "Docker daemon connection lost"
+          description: "CodeBeaker cannot connect to Docker daemon"
+
+      # Frequent Docker reconnections
+      - alert: FrequentDockerReconnections
+        expr: rate(codebeaker_docker_reconnections_total[10m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: docker
+        annotations:
+          summary: "Frequent Docker daemon reconnections"
+          description: "Docker reconnection rate: {{ $value | humanize }}/sec (threshold: 0.1/sec)"
+
+  - name: codebeaker_availability
+    interval: 30s
+    rules:
+      # Application restart detected
+      - alert: ApplicationRestarted
+        expr: increase(codebeaker_restart_total[5m]) > 0
+        labels:
+          severity: info
+          component: system
+        annotations:
+          summary: "CodeBeaker application restarted"
+          description: "Application has been restarted {{ $value }} time(s) in the last 5 minutes"
+
+      # Queue depth too high
+      - alert: HighQueueDepth
+        expr: codebeaker_queue_depth > 1000
+        for: 5m
+        labels:
+          severity: warning
+          component: queue
+        annotations:
+          summary: "Queue depth is too high"
+          description: "Queue depth: {{ $value }} tasks (threshold: 1000)"
+
+  - name: codebeaker_sessions
+    interval: 30s
+    rules:
+      # Session creation rate spike
+      - alert: SessionCreationRateSpike
+        expr: |
+          rate(codebeaker_sessions_created_total[5m])
+          >
+          2 * avg_over_time(rate(codebeaker_sessions_created_total[5m])[1h:5m])
+        for: 10m
+        labels:
+          severity: warning
+          component: sessions
+        annotations:
+          summary: "Session creation rate spike detected"
+          description: "Current rate: {{ $value | humanize }}/sec (2x normal rate)"
+
+      # High session close rate with errors
+      - alert: HighSessionCloseErrorRate
+        expr: |
+          (
+            rate(codebeaker_sessions_closed_total{reason="error"}[5m])
+            /
+            rate(codebeaker_sessions_closed_total[5m])
+          ) > 0.2
+        for: 5m
+        labels:
+          severity: warning
+          component: sessions
+        annotations:
+          summary: "High session error close rate"
+          description: "Error close rate: {{ $value | humanizePercentage }} (threshold: 20%)"

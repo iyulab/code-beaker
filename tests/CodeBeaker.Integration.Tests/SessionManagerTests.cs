@@ -22,7 +22,8 @@ public sealed class SessionManagerTests : IDisposable
         var denoRuntime = new DenoRuntime();
 
         var runtimes = new List<IExecutionRuntime> { dockerRuntime, denoRuntime };
-        _sessionManager = new SessionManager(runtimes);
+        var sessionStore = new CodeBeaker.Core.Storage.InMemorySessionStore();
+        _sessionManager = new SessionManager(sessionStore, runtimes);
     }
 
     private Mock<IExecutionRuntime> CreateMockDockerRuntime()

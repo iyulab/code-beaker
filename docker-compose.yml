@@ -1,6 +1,23 @@
 version: '3.8'
 
 services:
+  # Redis for distributed session storage
+  redis:
+    image: redis:7-alpine
+    container_name: codebeaker-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - codebeaker-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   api:
     build:
       context: .
@@ -13,10 +30,14 @@ services:
       - ASPNETCORE_URLS=http://+:8080
       - Queue__Path=/data/queue
       - Storage__Path=/data/storage
+      - Redis__ConnectionString=redis:6379
     volumes:
       - codebeaker-data:/data
     networks:
       - codebeaker-network
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 30s
@@ -44,6 +65,8 @@ services:
 
 volumes:
   codebeaker-data:
+    driver: local
+  redis-data:
     driver: local
 
 networks:

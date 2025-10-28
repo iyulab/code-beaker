@@ -1,8 +1,30 @@
 # CodeBeaker 개발 로드맵
 
-**현재 버전**: v1.2.0 (Phase 5 Complete)
+> ⚠️ **Note**: This document is outdated (shows v1.2.0 Phase 5).
+>
+> **For current roadmap**, see:
+> - [RELEASE_NOTES_v1.0.md](../RELEASE_NOTES_v1.0.md) - v1.0 release with all 11 phases ⭐
+> - [docs-site/docs/intro.md](../docs-site/docs/intro.md) - Current status and roadmap
+> - [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md) - Complete documentation index
+
+---
+
+**실제 현재 버전**: v1.0 (All 11 Phases Complete)
+**최종 업데이트**: 2025
+**상태**: ✅ **프로덕션 준비 완료 with Security Hardening** 🚀
+
+**주요 업데이트**:
+- ✅ Phase 6-11 완료 (Observability, Documentation, Enhanced Runtimes, Package Management, Security)
+- ✅ 5-layer 보안 아키텍처
+- ✅ 147 tests (98.1% pass rate)
+- ✅ npm, pip 패키지 관리 지원
+
+---
+
+## Legacy Document (Phase 5 Roadmap)
+
+**이전 버전**: v1.2.0 (Phase 5 Complete)
 **최종 업데이트**: 2025-10-27
-**상태**: ✅ **프로덕션 준비 완료** 🚀
 
 ---
 

@@ -84,6 +84,11 @@ public interface IExecutionEnvironment : IAsyncDisposable
     /// 환경 정리
     /// </summary>
     Task CleanupAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 현재 리소스 사용량 조회 (Phase 6.2)
+    /// </summary>
+    Task<ResourceUsage?> GetResourceUsageAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -110,6 +115,11 @@ public enum RuntimeType
     /// Node.js 런타임
     /// </summary>
     NodeJs,
+
+    /// <summary>
+    /// Python 런타임
+    /// </summary>
+    Python,
 
     /// <summary>
     /// WebAssembly (Wasmer)
@@ -231,24 +241,118 @@ public sealed class RuntimeConfig
 }
 
 /// <summary>
-/// 리소스 제한
+/// 리소스 제한 (Phase 6.2 확장)
 /// </summary>
 public sealed class ResourceLimits
 {
-    /// <summary>
-    /// 메모리 제한 (MB)
-    /// </summary>
-    public long? MemoryLimitMB { get; set; }
+    // === Memory Limits ===
 
     /// <summary>
-    /// CPU 제한 (shares)
+    /// 메모리 제한 (bytes) - 하드 리미트
+    /// </summary>
+    public long? MemoryLimitBytes { get; set; }
+
+    /// <summary>
+    /// 메모리 경고 임계값 (bytes) - 소프트 리미트
+    /// </summary>
+    public long? MemoryWarningBytes { get; set; }
+
+    /// <summary>
+    /// 메모리 예약 (bytes) - 최소 보장
+    /// </summary>
+    public long? MemoryReservationBytes { get; set; }
+
+    /// <summary>
+    /// Swap 메모리 제한 (bytes)
+    /// </summary>
+    public long? MemorySwapLimitBytes { get; set; }
+
+    // === CPU Limits ===
+
+    /// <summary>
+    /// CPU 가중치 (shares, 1024 = 100%)
     /// </summary>
     public long? CpuShares { get; set; }
 
     /// <summary>
-    /// 실행 시간 제한 (초)
+    /// CPU Quota (microseconds per period)
+    /// 예: 50000 = 0.5 CPU core
+    /// </summary>
+    public long? CpuQuotaMicroseconds { get; set; }
+
+    /// <summary>
+    /// CPU Period (microseconds, 기본 100000)
+    /// </summary>
+    public long? CpuPeriodMicroseconds { get; set; }
+
+    /// <summary>
+    /// CPU 코어 개수 제한
+    /// </summary>
+    public double? CpuCount { get; set; }
+
+    // === Disk I/O Limits ===
+
+    /// <summary>
+    /// 디스크 사용량 제한 (bytes)
+    /// </summary>
+    public long? DiskQuotaBytes { get; set; }
+
+    /// <summary>
+    /// 디스크 읽기 속도 제한 (bytes/sec)
+    /// </summary>
+    public long? DiskReadBytesPerSec { get; set; }
+
+    /// <summary>
+    /// 디스크 쓰기 속도 제한 (bytes/sec)
+    /// </summary>
+    public long? DiskWriteBytesPerSec { get; set; }
+
+    // === Network Limits ===
+
+    /// <summary>
+    /// 네트워크 수신 대역폭 제한 (bytes/sec)
+    /// </summary>
+    public long? NetworkIngressBytesPerSec { get; set; }
+
+    /// <summary>
+    /// 네트워크 송신 대역폭 제한 (bytes/sec)
+    /// </summary>
+    public long? NetworkEgressBytesPerSec { get; set; }
+
+    // === Process Limits ===
+
+    /// <summary>
+    /// 최대 프로세스/스레드 개수
+    /// </summary>
+    public int? MaxProcesses { get; set; }
+
+    /// <summary>
+    /// 최대 파일 디스크립터 개수
+    /// </summary>
+    public int? MaxFileDescriptors { get; set; }
+
+    // === Execution Limits ===
+
+    /// <summary>
+    /// 최대 실행 시간 (초)
     /// </summary>
     public int? TimeoutSeconds { get; set; }
+
+    /// <summary>
+    /// Idle 상태 최대 시간 (초)
+    /// </summary>
+    public int? IdleTimeoutSeconds { get; set; }
+
+    // === Backward Compatibility Helper ===
+
+    /// <summary>
+    /// 메모리 제한 (MB) - 레거시 호환
+    /// </summary>
+    public long? MemoryLimitMB
+    {
+        get => MemoryLimitBytes.HasValue ? MemoryLimitBytes.Value / (1024 * 1024) : null;
+        set => MemoryLimitBytes = value.HasValue ? value.Value * 1024 * 1024 : null;
+    }
 }
 
 /// <summary>

@@ -40,4 +40,10 @@ public interface ISessionManager
     /// 만료된 세션 정리
     /// </summary>
     Task CleanupExpiredSessionsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 세션의 리소스 사용량 조회 (Phase 8.1)
+    /// IResourceMonitor를 구현한 런타임만 지원
+    /// </summary>
+    Task<ResourceUsage?> GetSessionResourceUsageAsync(string sessionId, CancellationToken cancellationToken = default);
 }

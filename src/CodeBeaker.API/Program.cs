@@ -17,8 +17,41 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi.Models;
 using Prometheus;
+using Serilog;
+using Serilog.Events;
+
+// Phase 8: Structured logging with Serilog
+var machineName = Environment.MachineName;
+var appVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "unknown";
+var aspNetCoreEnv = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production";
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
+    .MinimumLevel.Override("System", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .Enrich.WithProperty("Application", "CodeBeaker")
+    .Enrich.WithProperty("Version", appVersion)
+    .Enrich.WithProperty("Environment", aspNetCoreEnv)
+    .Enrich.WithProperty("MachineName", machineName)
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext}: {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File(
+        "logs/codebeaker-.log",
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 7,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{MachineName}] [{Application}] {SourceContext} {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+try
+{
+    Log.Information("Starting CodeBeaker API");
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Phase 8: Use Serilog for logging
+builder.Host.UseSerilog();
 
 // 설정 로드
 var queuePath = builder.Configuration.GetValue<string>("Queue:Path") ?? Path.Combine(Path.GetTempPath(), "codebeaker-queue");
@@ -28,20 +61,68 @@ var storagePath = builder.Configuration.GetValue<string>("Storage:Path") ?? Path
 builder.Services.AddSingleton<IQueue>(sp => new FileQueue(queuePath));
 builder.Services.AddSingleton<IStorage>(sp => new FileStorage(storagePath));
 
+// Docker Client 등록 (Phase 6.3 - Docker 관련 서비스 공유)
+builder.Services.AddSingleton<Docker.DotNet.DockerClient>(sp =>
+{
+    var dockerHost = OperatingSystem.IsWindows()
+        ? "npipe://./pipe/docker_engine"
+        : "unix:///var/run/docker.sock";
+
+    return new Docker.DotNet.DockerClientConfiguration(new Uri(dockerHost))
+        .CreateClient();
+});
+
 // Multi-Runtime 등록
 builder.Services.AddSingleton<IExecutionRuntime>(sp => new DockerRuntime());
 builder.Services.AddSingleton<IExecutionRuntime>(sp => new DenoRuntime());
 builder.Services.AddSingleton<IExecutionRuntime>(sp => new BunRuntime());
+builder.Services.AddSingleton<IExecutionRuntime>(sp => new CodeBeaker.Runtimes.Node.NodeRuntime()); // Phase 9.1
+builder.Services.AddSingleton<IExecutionRuntime>(sp => new CodeBeaker.Runtimes.Python.PythonRuntime()); // Phase 9.2
 
-// SessionManager에 Multi-Runtime 주입
+// Session Store 등록 (InMemory 기본, 환경 변수로 Redis 전환 가능)
+var redisConnectionString = builder.Configuration.GetValue<string>("Redis:ConnectionString");
+if (!string.IsNullOrEmpty(redisConnectionString))
+{
+    // Redis 사용 (분산 환경)
+    builder.Services.AddSingleton<ISessionStore>(sp =>
+    {
+        var redis = StackExchange.Redis.ConnectionMultiplexer.Connect(redisConnectionString);
+        return new RedisSessionStore(redis);
+    });
+    builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(sp =>
+    {
+        return StackExchange.Redis.ConnectionMultiplexer.Connect(redisConnectionString);
+    });
+}
+else
+{
+    // InMemory 사용 (단일 인스턴스)
+    builder.Services.AddSingleton<ISessionStore, InMemorySessionStore>();
+}
+
+// SessionManager에 ISessionStore + Multi-Runtime 주입
 builder.Services.AddSingleton<ISessionManager>(sp =>
 {
+    var sessionStore = sp.GetRequiredService<ISessionStore>();
     var runtimes = sp.GetServices<IExecutionRuntime>();
-    return new SessionManager(runtimes);
+    return new SessionManager(sessionStore, runtimes);
 });
+
+// Phase 7: Command Result Cache (optional)
+builder.Services.AddSingleton(sp => new CodeBeaker.Core.Caching.CommandResultCache(
+    defaultExpiration: TimeSpan.FromMinutes(5),
+    maxCacheSize: 1000));
 
 // Background services
 builder.Services.AddHostedService<SessionCleanupWorker>();
+
+// Phase 6.3: Graceful Shutdown & Stability
+builder.Services.AddHostedService<CodeBeaker.Core.Services.GracefulShutdownService>();
+builder.Services.AddHostedService<CodeBeaker.Runtimes.Docker.DockerConnectionMonitor>();
+builder.Services.AddHostedService<CodeBeaker.Runtimes.Docker.DockerCleanupService>();
+
+// Phase 8: Metrics Collection
+builder.Services.AddHostedService<CodeBeaker.API.Metrics.MetricsCollectionService>();
 
 // JSON-RPC 설정
 builder.Services.AddSingleton(sp =>
@@ -316,6 +397,18 @@ foreach (var runtime in runtimes)
 }
 
 app.Run();
+
+    Log.Information("CodeBeaker API stopped gracefully");
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "CodeBeaker API terminated unexpectedly");
+    throw;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 // WebApplicationFactory를 위한 public partial Program 클래스
 public partial class Program { }
