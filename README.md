@@ -431,6 +431,61 @@ Integration tests can be run manually on GitHub Actions:
 - **교육**: 학생 코드 실행 및 피드백
 - **대화형 노트북**: Jupyter 스타일 실행
 
+## 🤖 AI Agent Sample (Phase 12)
+
+CodeBeaker를 AI 에이전트가 활용하는 실전 샘플을 제공합니다.
+
+### 기능
+- **AI 코드 생성**: OpenAI API로 요구사항에 맞는 코드 자동 생성
+- **자동 실행**: 생성된 코드를 CodeBeaker에서 안전하게 실행
+- **결과 검증**: 실행 결과 확인 및 성공/실패 판단
+- **점진적 개선**: 에러 발생 시 AI가 분석하고 수정 (향후 구현)
+
+### 빠른 시작
+
+```bash
+# 1. .env 파일 설정 (프로젝트 루트)
+echo "OPENAI_API_KEY=your-key-here" > .env
+echo "OPENAI_MODEL=gpt-4" >> .env
+
+# 2. CodeBeaker API 실행 (터미널 1)
+dotnet run --project src/CodeBeaker.API
+
+# 3. AI Agent 샘플 실행 (터미널 2)
+cd samples/CodeBeaker.AI.Agent
+dotnet run
+```
+
+### 실행 예시
+
+```
+[Scenario] Simple Coding: Write a Python function to calculate factorial...
+
+[Step 1] Creating CodeBeaker session...
+✅ Session created: session-abc123
+
+[Step 2] Requesting code from OpenAI...
+✅ Code generated
+
+[Step 3] Writing code to CodeBeaker workspace...
+✅ File written: solution.py
+
+[Step 4] Executing code...
+✅ Execution successful!
+
+--- Output ---
+120
+3628800
+--- End Output ---
+
+✅ Scenario completed successfully!
+```
+
+### 문서
+- [AI Agent 샘플 README](samples/CodeBeaker.AI.Agent/README.md)
+- [Phase 12 전체 계획](claudedocs/PHASE12_AI_AGENT_INTEGRATION.md)
+- [Phase 12 완료 요약](claudedocs/PHASE12_SUMMARY.md)
+
 ## 개발
 
 ### Project Structure

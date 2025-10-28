@@ -13,6 +13,8 @@ namespace CodeBeaker.Commands.Models;
 [JsonDerivedType(typeof(CopyFileCommand), typeDiscriminator: "copy_file")]
 [JsonDerivedType(typeof(ExecuteShellCommand), typeDiscriminator: "shell")]
 [JsonDerivedType(typeof(InstallPackagesCommand), typeDiscriminator: "install_packages")]
+[JsonDerivedType(typeof(ListFilesCommand), typeDiscriminator: "list_files")]
+[JsonDerivedType(typeof(DiffCommand), typeDiscriminator: "diff")]
 public abstract class Command
 {
     /// <summary>
