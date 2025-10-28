@@ -513,6 +513,19 @@ public sealed class DenoEnvironment : IExecutionEnvironment
 
     private string GetFullPath(string path)
     {
+        // Handle /workspace virtual path (Unix-style container path)
+        if (path.StartsWith("/workspace/") || path.StartsWith("/workspace\\"))
+        {
+            var relativePath = path.Substring("/workspace/".Length);
+            return Path.Combine(_config.WorkspaceDirectory, relativePath);
+        }
+
+        if (path == "/workspace")
+        {
+            return _config.WorkspaceDirectory;
+        }
+
+        // Handle rooted paths
         if (Path.IsPathRooted(path))
         {
             return path;
