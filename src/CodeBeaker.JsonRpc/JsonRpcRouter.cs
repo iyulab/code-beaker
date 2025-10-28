@@ -144,7 +144,14 @@ public sealed class JsonRpcRouter
         }
         catch (Exception ex)
         {
-            throw new JsonRpcException(JsonRpcError.InternalError(ex.Message));
+            // Include full exception details for debugging
+            var errorDetails = $"{ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}";
+            if (ex.InnerException != null)
+            {
+                errorDetails += $"\nInner: {ex.InnerException.GetType().Name}: {ex.InnerException.Message}";
+            }
+            Console.WriteLine($"[JsonRpcRouter ERROR] {errorDetails}");
+            throw new JsonRpcException(JsonRpcError.InternalError(errorDetails));
         }
     }
 }
