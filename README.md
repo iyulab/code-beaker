@@ -1,6 +1,6 @@
-# 🧪 CodeBeaker v1.0
+# CodeBeaker
 
-**Production-Ready Multi-Runtime Code Execution Platform with Security Hardening**
+Multi-runtime code execution platform for .NET
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/)
@@ -10,51 +10,46 @@
 [![Node.js](https://img.shields.io/badge/Node.js-Runtime-339933)](https://nodejs.org/)
 [![Python](https://img.shields.io/badge/Python-Runtime-3776AB)](https://www.python.org/)
 
----
+## 개요
 
-## 🚀 Overview
+CodeBeaker는 다중 런타임을 지원하는 코드 실행 플랫폼입니다. WebSocket + JSON-RPC 2.0 프로토콜을 사용하여 실시간 양방향 통신을 제공하며, 세션 기반 실행 환경 재사용을 통해 성능을 향상시킵니다.
 
-CodeBeaker는 **5개 런타임 지원**, **패키지 관리**, **보안 하드닝**을 갖춘 프로덕션 준비 완료 코드 실행 플랫폼입니다.
+## 주요 기능
 
-### 🎉 v1.0 Major Features
+- **다중 런타임 지원**: Docker, Deno, Bun, Node.js, Python 5개 런타임
+- **세션 관리**: 환경 재사용을 통한 성능 향상
+- **패키지 관리**: npm, pip 자동 설치 지원
+- **보안 기능**: 입력 검증, 속도 제한, 감사 로깅
+- **실시간 통신**: WebSocket + JSON-RPC 2.0
+- **모니터링**: Prometheus 메트릭, 헬스체크
 
-- **🚀 5 Runtime Support**: Docker, Deno, Bun, Node.js, Python
-- **📦 Package Management**: npm (Node.js), pip (Python with venv)
-- **🔒 Security Hardening**: Input validation, rate limiting, audit logging
-- **⚡ Ultra-Fast**: Bun 50ms, Deno 80ms startup (40x faster than Docker)
-- **📊 Observability**: Prometheus metrics, health checks, Docusaurus docs
-- **🛡️ Defense in Depth**: 5-layer security architecture
+## 지원 언어 및 런타임
 
-### ✅ Development Status (v1.0 - 2025)
-
-- ✅ **Phase 1**: JSON-RPC 2.0 + WebSocket
-- ✅ **Phase 2**: Custom Command Interface
-- ✅ **Phase 3**: Session Management
-- ✅ **Phase 4**: Multi-Runtime Architecture (Docker, Deno, Bun)
-- ✅ **Phase 5**: Performance Optimization & Benchmarking
-- ✅ **Phase 6**: Distributed Sessions & Stability
-- ✅ **Phase 7**: Performance Enhancements
-- ✅ **Phase 8**: Observability (Prometheus + Healthchecks + Docs)
-- ✅ **Phase 9**: Runtime Expansion (Node.js, Python)
-- ✅ **Phase 10**: Package Management (npm, pip)
-- ✅ **Phase 11**: Production Hardening (Security) ⭐ **NEW**
-
-**Status**: ✅ **v1.0 Production Ready** 🚀
+| 언어       | 런타임    | 시작 시간 | 메모리 | 격리 수준 | 패키지 관리 |
+|-----------|----------|---------|--------|---------|-----------|
+| Python    | Docker   | ~560ms  | 250MB  | 9/10    | pip       |
+| Python    | Native   | ~100ms  | 50MB   | 6/10    | pip+venv  |
+| JavaScript| Bun      | ~50ms   | 25MB   | 7/10    | npm       |
+| TypeScript| Bun      | ~50ms   | 25MB   | 7/10    | npm       |
+| JavaScript| Deno     | ~80ms   | 30MB   | 7/10    | -         |
+| TypeScript| Deno     | ~80ms   | 30MB   | 7/10    | -         |
+| JavaScript| Node.js  | ~200ms  | 60MB   | 6/10    | npm       |
+| JavaScript| Docker   | ~560ms  | 250MB  | 9/10    | npm       |
 
 ---
 
-## ⚡ Quick Start
+## 설치 및 실행
 
-### Prerequisites
+### 요구사항
 
 - .NET 8.0 SDK
-- Docker Desktop (optional, for Docker runtime)
-- Node.js 18+ (optional, for Node.js runtime)
-- Python 3.9+ (optional, for Python runtime)
-- Deno 1.40+ (optional, for Deno runtime)
-- Bun 1.0+ (optional, for Bun runtime)
+- Docker Desktop (선택사항, Docker 런타임 사용 시)
+- Node.js 18+ (선택사항, Node.js 런타임 사용 시)
+- Python 3.9+ (선택사항, Python 런타임 사용 시)
+- Deno 1.40+ (선택사항, Deno 런타임 사용 시)
+- Bun 1.0+ (선택사항, Bun 런타임 사용 시)
 
-### 🎯 Quick Setup (5 minutes)
+### 시작하기
 
 **Windows:**
 ```powershell
@@ -78,13 +73,13 @@ dotnet build
 dotnet run --project src/CodeBeaker.API
 ```
 
-### 🌐 WebSocket Connection
+### WebSocket 연결
 
 ```
 ws://localhost:5039/ws/jsonrpc
 ```
 
-### 📝 Usage Example
+### 사용 예제
 
 ```javascript
 const ws = new WebSocket('ws://localhost:5039/ws/jsonrpc');
@@ -136,9 +131,9 @@ ws.send(JSON.stringify({
 
 ---
 
-## 🏗️ Architecture
+## 아키텍처
 
-### System Overview
+### 시스템 구조
 
 ```
 ┌──────────────────────────────────────────────┐
@@ -176,11 +171,11 @@ ws.send(JSON.stringify({
 │  │ Startup: ~560ms | Memory: 250MB        │ │
 │  └────────────────────────────────────────┘ │
 │  ┌────────────────────────────────────────┐ │
-│  │ Bun ⚡⚡ (Isolation: 7/10)              │ │
+│  │ Bun (Isolation: 7/10)                  │ │
 │  │ Startup: ~50ms | Memory: 25MB          │ │
 │  └────────────────────────────────────────┘ │
 │  ┌────────────────────────────────────────┐ │
-│  │ Deno ⚡ (Isolation: 7/10)               │ │
+│  │ Deno (Isolation: 7/10)                 │ │
 │  │ Startup: ~80ms | Memory: 30MB          │ │
 │  └────────────────────────────────────────┘ │
 │  ┌────────────────────────────────────────┐ │
@@ -196,53 +191,29 @@ ws.send(JSON.stringify({
 └──────────────────────────────────────────────┘
 ```
 
-### Supported Languages & Runtimes
-
-| Language   | Runtime Options | Startup | Memory | Isolation | Package Manager | Recommended Use |
-|-----------|----------------|---------|--------|-----------|----------------|-----------------|
-| JavaScript | **Bun** ⚡⚡ | **50ms** | **25MB** | 7/10 | npm | Ultra-fast execution, AI agents |
-| TypeScript | **Bun** ⚡⚡ | **50ms** | **25MB** | 7/10 | npm | Type-safe + ultra-fast |
-| JavaScript | **Deno** ⚡ | **80ms** | **30MB** | 7/10 | deno.land | Security-first, modern JS |
-| TypeScript | **Deno** ⚡ | **80ms** | **30MB** | 7/10 | deno.land | Deno ecosystem |
-| JavaScript | **Node.js** | **100ms** | **40MB** | 5/10 | **npm** | Node.js ecosystem + packages |
-| TypeScript | **Node.js** | **100ms** | **40MB** | 5/10 | **npm** | Node.js + TypeScript |
-| Python | **Python** | **200ms** | **50MB** | 5/10 | **pip + venv** | Python packages + isolation |
-| Python | Docker | ~560ms | 250MB | 9/10 | pip | Complex dependencies |
-| JavaScript | Docker | ~560ms | 250MB | 9/10 | npm | Maximum isolation |
-
-**⭐ NEW in v1.0**:
-- **Node.js Runtime**: Native npm package support with local/global installation
-- **Python Runtime**: Automatic virtual environment (venv) creation for package isolation
-- **Package Management**: `install_packages` command for npm and pip
-
 ---
 
-## 🎯 Key Features
+## 주요 기능
 
-### 1. Multi-Runtime Architecture (Phase 4, 9)
+### 1. 다중 런타임 아키텍처
 
-**5 Runtime Options with Intelligent Selection**
+런타임 선택 전략에 따라 최적의 실행 환경을 자동으로 선택합니다.
 
 ```csharp
-// C# API - Auto-select optimal runtime
 var selector = new RuntimeSelector(runtimes);
 
-// Speed priority (Bun selected)
+// 속도 우선
 var runtime = await selector.SelectBestRuntimeAsync(
     "javascript", RuntimePreference.Speed);
 
-// Security priority (Docker selected)
+// 보안 우선
 var runtime = await selector.SelectBestRuntimeAsync(
     "python", RuntimePreference.Security);
-
-// Explicit runtime selection
-var runtime = await selector.SelectByTypeAsync(
-    RuntimeType.NodeJs, "javascript");
 ```
 
-### 2. Package Management (Phase 10) ⭐ NEW
+### 2. 패키지 관리
 
-**npm Package Installation**
+**npm 패키지 설치**
 ```json
 {
   "jsonrpc": "2.0",
@@ -258,7 +229,7 @@ var runtime = await selector.SelectByTypeAsync(
 }
 ```
 
-**pip Package Installation with venv**
+**pip 패키지 설치 (venv 자동 생성)**
 ```json
 {
   "jsonrpc": "2.0",
@@ -274,14 +245,13 @@ var runtime = await selector.SelectByTypeAsync(
 }
 ```
 
-**Features**:
-- **npm**: Local/global installation, package.json support
-- **pip**: Automatic venv creation, requirements.txt support, session isolation
-- **Timeout**: 600 seconds for package installation
+**기능**:
+- npm: 로컬/전역 설치, package.json 지원
+- pip: 자동 venv 생성, requirements.txt 지원, 세션 격리
 
-### 3. Production Hardening (Phase 11) ⭐ NEW
+### 3. 보안 기능
 
-**5-Layer Security Architecture**
+**5단계 보안 아키텍처**
 
 ```csharp
 // Production security configuration
@@ -311,26 +281,23 @@ var security = new SecurityConfig
 };
 ```
 
-**Security Features**:
-- ✅ **Input Validation**: Code/file/command validation with pattern blocking
-- ✅ **Rate Limiting**: Per-session throttling (60 executions/minute default)
-- ✅ **Audit Logging**: All operations logged with 12 event types
-- ✅ **Sandbox Mode**: Workspace restriction, file extension filtering
-- ✅ **Attack Protection**: 98.1% detection rate (144/147 tests passed)
+**보안 기능**:
+- 입력 검증: 코드/파일/명령어 검증 및 패턴 차단
+- 속도 제한: 세션당 실행 제한 (기본 60회/분)
+- 감사 로깅: 모든 작업 로그 기록 (12개 이벤트 타입)
+- 샌드박스: 작업 공간 제한, 파일 확장자 필터링
+- 공격 방어: 98.1% 탐지율 (147개 테스트 중 144개 통과)
 
-**Protected Against**:
-- Directory traversal (100% blocked)
-- Command injection (100% blocked)
-- Package injection (100% blocked)
-- Privilege escalation (100% blocked)
-- DoS attacks (rate limiting + resource limits)
-- Fork bombs (33% pattern detection + rate limiting backup)
+**방어 대상**:
+- 디렉토리 탐색 (100% 차단)
+- 명령어 주입 (100% 차단)
+- 패키지 주입 (100% 차단)
+- 권한 상승 (100% 차단)
+- DoS 공격 (속도 제한 + 리소스 제한)
 
-**Performance Overhead**: <1% (~3-10ms per execution)
+### 4. 모니터링
 
-### 4. Observability (Phase 8)
-
-**Prometheus Metrics**
+**Prometheus 메트릭**
 ```
 GET /metrics
 
@@ -388,81 +355,57 @@ dotnet test tests/CodeBeaker.Core.Tests
 dotnet test tests/CodeBeaker.Integration.Tests
 ```
 
----
+## 성능
 
-## 📊 Performance
+### 런타임 비교 (벤치마크 결과)
 
-### Runtime Comparison (Benchmark Results)
+| 지표 | Docker | Bun | Deno | Node.js | Python |
+|------|--------|-----|------|---------|--------|
+| 시작 시간 | 560ms | 50ms | 80ms | 100ms | 200ms |
+| 메모리 | 250MB | 25MB | 30MB | 40MB | 50MB |
+| 코드 실행 | 1.2ms | <1ms | <1ms | <1ms | <2ms |
+| 파일 작업 | 146ms | <5ms | <5ms | <5ms | <5ms |
+| 격리 수준 | 9/10 | 7/10 | 7/10 | 5/10 | 5/10 |
 
-| Metric | Docker | Bun | Deno | Node.js | Python |
-|--------|--------|-----|------|---------|--------|
-| **Startup** | 560ms | **50ms** | **80ms** | **100ms** | **200ms** |
-| **Memory** | 250MB | **25MB** | **30MB** | **40MB** | **50MB** |
-| **Code Exec** | 1.2ms | <1ms | <1ms | <1ms | <2ms |
-| **File Ops** | 146ms | <5ms | <5ms | <5ms | <5ms |
-| **Isolation** | 9/10 | 7/10 | 7/10 | 5/10 | 5/10 |
+**성능 특징**:
+- Bun: Docker 대비 시작 시간 11배, 파일 작업 30배 빠름
+- Deno: Docker 대비 시작 시간 7배, 파일 작업 30배 빠름
+- Node.js: Docker 대비 시작 시간 5.6배, npm 생태계 지원
+- Python: venv 격리, 최소 오버헤드
+- 보안 오버헤드: <1% (실행당 3-10ms)
 
-**Performance Insights**:
-- **Bun**: 11x faster startup, 30x faster file operations vs Docker
-- **Deno**: 7x faster startup, 30x faster file operations vs Docker
-- **Node.js**: 5.6x faster startup, native npm ecosystem
-- **Python**: venv isolation with minimal overhead
-- **Security Overhead**: <1% (3-10ms per execution)
+## 문서
 
----
+### 핵심 문서
+- [사용자 가이드](docs/USAGE.md) - WebSocket API 사용법
+- [아키텍처](docs/ARCHITECTURE.md) - 시스템 설계
+- [프로덕션 가이드](docs/PRODUCTION_READY.md) - 배포 가이드
+- [릴리스 노트](RELEASE_NOTES_v1.0.md) - v1.0 릴리스 정보
+- [문서 인덱스](DOCUMENTATION_INDEX.md) - 전체 문서 목록
 
-## 📚 Documentation
+### 배포 및 운영
+- [보안 가이드](claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md) - 보안 기능
+- [배포 가이드](DEPLOYMENT_GUIDE_v1.0.md) - 프로덕션 배포
+- [테스트 결과](claudedocs/TEST_RESULTS_PHASE11.md) - 테스트 보고서
 
-### Core Documentation
-- 📘 [**User Guide**](docs/USAGE.md) - WebSocket API usage and examples
-- 🏗️ [**Architecture**](docs/ARCHITECTURE.md) - System design and architecture
-- 🚀 [**Production Guide**](docs/PRODUCTION_READY.md) - Deployment guide
-- 📋 [**Release Notes**](RELEASE_NOTES_v1.0.md) - v1.0 release information
+### Phase 문서
+- Phase 1-11 완료 보고서: [claudedocs/](claudedocs/)
+- Package Management: [PHASE10](claudedocs/PHASE10_PACKAGE_MANAGEMENT_COMPLETE.md)
+- Security Hardening: [PHASE11](claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md)
 
-### Deployment & Operations
-- 🔐 [**Security Guide**](claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md) - Security features
-- 📦 [**Deployment Guide**](claudedocs/DEPLOYMENT_GUIDE_v1.0.md) - Production deployment
-- 🧪 [**Test Results**](claudedocs/TEST_RESULTS_PHASE11.md) - Comprehensive test report
+### API 문서
+- [Docusaurus 문서 사이트](docs-site/)
+- [API 레퍼런스](docs-site/docs/api/overview.md)
 
-### Phase Documentation
-- Phase 6-8: [Stability & Observability](claudedocs/)
-- Phase 9: [Runtime Expansion](claudedocs/PHASE9_RUNTIME_EXPANSION_COMPLETE.md)
-- Phase 10: [Package Management](claudedocs/PHASE10_PACKAGE_MANAGEMENT_COMPLETE.md)
-- Phase 11: [Security Hardening](claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md)
+## 사용 사례
 
-### API Documentation
-- [Docusaurus Documentation Site](docs-site/) - `npm start` in docs-site/
-- [API Reference](docs-site/docs/api/overview.md)
-- [Examples & Tutorials](docs-site/docs/)
+- **AI 에이전트**: LLM 생성 코드 안전 실행
+- **코딩 플랫폼**: 온라인 저지, 코드 채점
+- **CI/CD**: 빌드 및 테스트 자동화
+- **교육**: 학생 코드 실행 및 피드백
+- **대화형 노트북**: Jupyter 스타일 실행
 
----
-
-## 🎯 Use Cases
-
-- **🤖 AI Agents**: LLM-generated code execution with security
-  - Rate limiting prevents abuse
-  - Audit logging for compliance
-  - Fast response with Bun/Deno (3-5x faster)
-
-- **📚 Coding Platforms**: Online judges, code grading
-  - Multi-runtime support for all languages
-  - Automatic runtime selection
-
-- **🔧 CI/CD**: Build and test automation
-  - Docker isolation for secure builds
-  - Package management support
-
-- **🎓 Education**: Student code execution and feedback
-  - Session-based execution preserves state
-  - Security prevents malicious code
-
-- **📓 Interactive Notebooks**: Jupyter-style execution
-  - Filesystem persistence
-  - Package installation support
-
----
-
-## 🔧 Development
+## 개발
 
 ### Project Structure
 
@@ -511,62 +454,44 @@ dotnet test --filter "FullyQualifiedName~Security"
 cd docs-site && npm start
 ```
 
----
+## 로드맵
 
-## 📈 Roadmap
+### v1.0 (완료)
+- 다중 런타임 아키텍처 (5개 런타임)
+- 패키지 관리 (npm, pip)
+- 보안 하드닝 (5단계 방어)
+- 모니터링 (Prometheus, 헬스체크, 문서)
+- 프로덕션 준비 (98.1% 테스트 통과율)
 
-### ✅ Completed (v1.0)
-- ✅ Multi-Runtime Architecture (5 runtimes)
-- ✅ Package Management (npm, pip)
-- ✅ Security Hardening (5-layer defense)
-- ✅ Observability (Prometheus, health checks, docs)
-- ✅ Production Ready (98.1% test coverage)
+### v1.1+ (예정)
+- 향상된 fork bomb 탐지
+- 감사 로그 데이터베이스 영속성
+- 고급 속도 제한 (사용자 기반, 계층형)
+- 보안 대시보드 UI
+- 다중 노드 분산 실행
+- 추가 런타임 (Ruby, Rust, Go)
 
-### 🔜 Future (v1.1+)
-- Enhanced fork bomb detection
-- Audit log database persistence
-- Advanced rate limiting (user-based, tiered)
-- Security dashboard UI
-- Multi-node distributed execution
-- Additional runtimes (Ruby, Rust, Go)
+자세한 내용은 [RELEASE_NOTES_v1.0.md](RELEASE_NOTES_v1.0.md) 참조.
 
-See [RELEASE_NOTES_v1.0.md](RELEASE_NOTES_v1.0.md) for detailed roadmap.
+## 기여
 
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
+기여를 환영합니다:
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
 5. Open a Pull Request
 
----
+## 라이선스
 
-## 📄 License
+MIT License - [LICENSE](LICENSE) 파일 참조
 
-MIT License - See [LICENSE](LICENSE) file for details
+## 참고
 
----
-
-## 🙏 Acknowledgments
-
-Inspired by and thanks to:
-- [Judge0](https://github.com/judge0/judge0) - Isolate sandboxing
-- [Piston](https://github.com/engineer-man/piston) - Lightweight execution engine
-- [E2B](https://e2b.dev/) - Firecracker-based execution
-- [Deno](https://deno.land/) - Secure JavaScript/TypeScript runtime
-- [Bun](https://bun.sh/) - Ultra-fast JavaScript runtime
-
----
-
-**CodeBeaker v1.0 - Production-Ready Multi-Runtime Code Execution Platform** 🧪✨
-
-**Status**: ✅ Production Ready | **Test Coverage**: 98.1% | **Security**: 5-Layer Defense
-
-[![Documentation](https://img.shields.io/badge/docs-docusaurus-blue)](docs-site/)
-[![Tests](https://img.shields.io/badge/tests-98.1%25-success)](claudedocs/TEST_RESULTS_PHASE11.md)
-[![Security](https://img.shields.io/badge/security-hardened-green)](claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md)
+다음 프로젝트에서 영감을 받았습니다:
+- [Judge0](https://github.com/judge0/judge0)
+- [Piston](https://github.com/engineer-man/piston)
+- [E2B](https://e2b.dev/)
+- [Deno](https://deno.land/)
+- [Bun](https://bun.sh/)

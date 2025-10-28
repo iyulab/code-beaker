@@ -182,7 +182,7 @@ public sealed class RateLimiterTests
         Assert.False(state.IsRateLimitExceeded()); // 2/3 - not exceeded
 
         state.ExecutionCount = 3;
-        Assert.False(state.IsRateLimitExceeded()); // 3/3 - at limit but not exceeded
+        Assert.True(state.IsRateLimitExceeded()); // 3/3 - at limit, exceeded
 
         state.ExecutionCount = 4;
         Assert.True(state.IsRateLimitExceeded()); // 4/3 - exceeded

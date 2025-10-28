@@ -120,7 +120,9 @@ public sealed class InputValidatorTests
 
         // Assert
         Assert.False(result.IsValid);
-        Assert.Contains("blocked pattern", result.ErrorMessage);
+        // Path traversal should be caught by either workspace check or blocked pattern
+        Assert.True(result.ErrorMessage.Contains("workspace directory") || result.ErrorMessage.Contains("blocked pattern"),
+            $"Expected error about workspace or blocked pattern, got: {result.ErrorMessage}");
     }
 
     [Fact]

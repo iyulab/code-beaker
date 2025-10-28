@@ -158,23 +158,6 @@ const config: Config = {
             },
           ],
         },
-        {
-          title: 'Contributors',
-          items: [
-            {
-              label: 'iyulab (Organization)',
-              href: 'https://github.com/iyulab',
-            },
-            {
-              label: 'Caveman (Core Contributor)',
-              href: 'https://github.com/iyulab-caveman',
-            },
-            {
-              label: 'Junhyung (Core Contributor)',
-              href: 'https://github.com/iujunhyung',
-            },
-          ],
-        },
       ],
       copyright: `Copyright © ${new Date().getFullYear()} CodeBeaker by <a href="https://github.com/iyulab" target="_blank" rel="noopener noreferrer">iyulab</a>. Built with Docusaurus.`,
     },

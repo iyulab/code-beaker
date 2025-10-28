@@ -1,6 +1,6 @@
+using CodeBeaker.Commands.Models;
 using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Core.Models;
-using CodeBeaker.Commands.Models;
 using Microsoft.Extensions.Logging;
 
 namespace CodeBeaker.Core.Security;
