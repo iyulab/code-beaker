@@ -326,6 +326,22 @@ GET /health/live     # Liveness
 
 ## 🧪 Testing
 
+### Test Strategy
+
+CodeBeaker separates tests into two categories:
+
+**Unit Tests (CI + Local)**
+- ✅ Run automatically on every push/PR
+- Fast execution (~1-2 minutes)
+- No external dependencies required
+- 93 tests covering core functionality
+
+**Integration Tests (Local Only)**
+- ⚠️ Require Docker and full runtime environment
+- Longer execution time (~5-10 minutes)
+- Run manually or on-demand
+- 54 tests for end-to-end scenarios
+
 ### Test Results (v1.0)
 
 ```
@@ -334,26 +350,36 @@ Passed: 144 (98.1%)
 Failed: 3 (fork bomb variants - non-critical)
 
 Categories:
-✅ Unit Tests: 93 tests (100%)
-✅ Integration Tests: 54 tests (96.3%)
+✅ Unit Tests: 93 tests (100%) - CI Enabled
+✅ Integration Tests: 54 tests (96.3%) - Local Only
 ✅ Security Simulation: 43 tests (95.3%)
 ```
 
 ### Run Tests
 
 ```bash
-# All tests
+# CI Tests (Unit Tests - Fast)
+dotnet test tests/CodeBeaker.Core.Tests
+dotnet test tests/CodeBeaker.Runtimes.Tests
+
+# Local Tests (Integration Tests - Requires Docker)
+dotnet test tests/CodeBeaker.Integration.Tests
+
+# All tests (Local Development)
 dotnet test
 
 # Security tests only
 dotnet test --filter "FullyQualifiedName~Security"
-
-# Unit tests
-dotnet test tests/CodeBeaker.Core.Tests
-
-# Integration tests
-dotnet test tests/CodeBeaker.Integration.Tests
 ```
+
+### GitHub Actions Integration Tests
+
+Integration tests can be run manually on GitHub Actions:
+1. Go to Actions tab → "Integration Tests (Manual)"
+2. Click "Run workflow"
+3. Select runtime to test (or "all")
+
+> **Note**: Integration tests may have limited functionality in CI due to Docker constraints. For best results, run locally.
 
 ## 성능
 
