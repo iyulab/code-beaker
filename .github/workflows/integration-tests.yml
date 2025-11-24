@@ -1,0 +1,86 @@
+name: Integration Tests (Manual)
+
+# 통합 테스트는 Docker 환경이 필요하므로 로컬 실행을 권장합니다
+# GitHub Actions에서는 수동 트리거로만 실행 가능합니다
+on:
+  workflow_dispatch:
+    inputs:
+      runtime:
+        description: 'Test specific runtime (leave empty for all)'
+        required: false
+        type: choice
+        options:
+          - all
+          - docker
+          - node
+          - python
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker runtime images
+      run: |
+        echo "Building Docker runtime images for testing..."
+        docker build -t codebeaker-python:latest docker/runtimes/python
+        docker build -t codebeaker-nodejs:latest docker/runtimes/nodejs
+        docker build -t codebeaker-golang:latest docker/runtimes/golang
+        docker build -t codebeaker-dotnet:latest docker/runtimes/csharp
+
+    - name: Verify Docker images
+      run: |
+        echo "Available Docker images:"
+        docker images | grep codebeaker
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build solution
+      run: dotnet build --no-restore --configuration Release
+
+    - name: Run integration tests
+      run: |
+        dotnet test tests/CodeBeaker.Integration.Tests/ \
+          --no-build \
+          --configuration Release \
+          --logger "trx;LogFileName=integration-test-results.trx" \
+          --logger "console;verbosity=detailed" \
+          --results-directory ./TestResults
+      continue-on-error: true
+
+    - name: Upload integration test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: integration-test-results
+        retention-days: 7
+        path: TestResults/**/*.trx
+
+    - name: Test Summary
+      if: always()
+      run: |
+        echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "⚠️ **Note**: Integration tests require Docker and complex infrastructure." >> $GITHUB_STEP_SUMMARY
+        echo "For best results, run these tests locally with:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        echo "dotnet test tests/CodeBeaker.Integration.Tests/ --configuration Release" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

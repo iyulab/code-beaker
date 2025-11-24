@@ -1,0 +1,151 @@
+# Default values for codebeaker
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+## Global settings
+global:
+  namespace: codebeaker
+
+## API component
+api:
+  replicaCount: 2
+
+  image:
+    repository: codebeaker/api
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 5039
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 70
+    targetMemoryUtilizationPercentage: 80
+
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+## Worker component
+worker:
+  replicaCount: 3
+
+  image:
+    repository: codebeaker/worker
+    pullPolicy: IfNotPresent
+    tag: "latest"
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 20
+    targetCPUUtilizationPercentage: 75
+    targetMemoryUtilizationPercentage: 85
+
+  concurrency: 10
+  pollIntervalMs: 100
+  maxRetries: 3
+
+## Persistence
+persistence:
+  enabled: true
+
+  data:
+    storageClass: ""
+    accessMode: ReadWriteMany
+    size: 10Gi
+
+  dockerImages:
+    storageClass: ""
+    accessMode: ReadWriteMany
+    size: 5Gi
+
+## Configuration
+config:
+  queueType: filesystem
+  queueBaseDir: /data/queue
+
+  storageType: filesystem
+  storageBaseDir: /data/storage
+
+  executionTimeoutSeconds: 30
+  executionMemoryLimitMb: 512
+
+  aspnetcoreEnvironment: Production
+
+## Ingress
+ingress:
+  enabled: false
+  className: "nginx"
+  annotations: {}
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+  hosts:
+    - host: codebeaker.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+    # - secretName: codebeaker-tls
+    #   hosts:
+    #     - codebeaker.example.com
+
+## ServiceAccount
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+## Pod Security
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
+
+## Node selection
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

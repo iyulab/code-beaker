@@ -1,0 +1,48 @@
+# Prometheus configuration for CodeBeaker
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'codebeaker'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Load alerting rules
+rule_files:
+  - 'alerts/*.yml'
+
+# Scrape configurations
+scrape_configs:
+  # CodeBeaker API metrics
+  - job_name: 'codebeaker-api'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets:
+          - 'codebeaker-api:8080'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'codebeaker-api'
+
+  # CodeBeaker Worker metrics
+  - job_name: 'codebeaker-worker'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets:
+          - 'codebeaker-worker:8081'
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'codebeaker-worker'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets:
+          - 'localhost:9090'
