@@ -6,6 +6,14 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Authors>iyulab</Authors>
+    <Description>Command and result models for CodeBeaker's multi-runtime code execution platform.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/iyulab/code-beaker</RepositoryUrl>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="Docker.DotNet" Version="3.125.15" />
   </ItemGroup>

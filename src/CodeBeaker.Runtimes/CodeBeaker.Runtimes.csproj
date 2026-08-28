@@ -11,4 +11,12 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Authors>iyulab</Authors>
+    <Description>Process-based language runtimes (Docker, Deno, Bun, Node, Python) for CodeBeaker.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/iyulab/code-beaker</RepositoryUrl>
+  </PropertyGroup>
+
 </Project>
