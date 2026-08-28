@@ -16,10 +16,12 @@ namespace CodeBeaker.Commands;
 public sealed class CommandExecutor : ICommandExecutor
 {
     private readonly IDockerClient _docker;
+    private readonly IContainerExecStreamIO _streamIO;
 
-    public CommandExecutor(IDockerClient docker)
+    public CommandExecutor(IDockerClient docker, IContainerExecStreamIO? streamIO = null)
     {
         _docker = docker;
+        _streamIO = streamIO ?? new DockerContainerExecStreamIO();
     }
 
     /// <summary>
@@ -111,7 +113,7 @@ public sealed class CommandExecutor : ICommandExecutor
 
             // Write content to stdin
             var bytes = Encoding.UTF8.GetBytes(command.Content);
-            await stream.WriteAsync(bytes, 0, bytes.Length, cancellationToken);
+            await _streamIO.WriteInputAsync(stream, bytes, cancellationToken);
 
             return CommandResult.Ok(new { path = command.Path, bytes = bytes.Length });
         }
@@ -251,38 +253,10 @@ public sealed class CommandExecutor : ICommandExecutor
     /// <summary>
     /// Read multiplexed Docker stream
     /// </summary>
-    private async Task<(string Stdout, string Stderr)> ReadStreamAsync(
+    private Task<(string Stdout, string Stderr)> ReadStreamAsync(
         MultiplexedStream stream,
         CancellationToken cancellationToken)
-    {
-        var stdout = new StringBuilder();
-        var stderr = new StringBuilder();
-
-        var buffer = new byte[4096];
-
-        while (true)
-        {
-            var result = await stream.ReadOutputAsync(buffer, 0, buffer.Length, cancellationToken);
-
-            if (result.EOF)
-            {
-                break;
-            }
-
-            var text = Encoding.UTF8.GetString(buffer, 0, result.Count);
-
-            if (result.Target == MultiplexedStream.TargetStream.StandardOut)
-            {
-                stdout.Append(text);
-            }
-            else if (result.Target == MultiplexedStream.TargetStream.StandardError)
-            {
-                stderr.Append(text);
-            }
-        }
-
-        return (stdout.ToString(), stderr.ToString());
-    }
+        => _streamIO.ReadOutputAsync(stream, cancellationToken);
 
     /// <summary>
     /// Execute ListFilesCommand - Get file tree structure

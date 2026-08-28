@@ -1,3 +1,4 @@
+using CodeBeaker.Commands.Interfaces;
 using CodeBeaker.Commands.Models;
 using CodeBeaker.Commands.Utilities;
 using Docker.DotNet;
@@ -13,20 +14,19 @@ namespace CodeBeaker.Commands.Tests;
 /// </summary>
 public class CommandExecutorTests : IDisposable
 {
-    // Docker.DotNet's MultiplexedStream.ReadOutputAsync is a non-virtual method that reads from
-    // the real underlying Stream, so Moq cannot substitute fake container stdout/stderr content
-    // for it — any test exercising a code path that reads exec output needs a real container.
-    private const string ContainerStdoutUnmockable =
-        "MultiplexedStream.ReadOutputAsync is non-virtual and always reads from the real Stream, so Moq cannot fake container output for it — this needs a real container (see CodeBeaker.Integration.Tests) or a stream-reading seam in CommandExecutor.";
-
     private readonly Mock<IDockerClient> _dockerMock;
+    private readonly Mock<IContainerExecStreamIO> _streamIOMock;
     private readonly CommandExecutor _executor;
     private readonly string _testContainerId = "test-container-123";
 
     public CommandExecutorTests()
     {
         _dockerMock = new Mock<IDockerClient>();
-        _executor = new CommandExecutor(_dockerMock.Object);
+        _streamIOMock = new Mock<IContainerExecStreamIO>();
+        _streamIOMock
+            .Setup(io => io.WriteInputAsync(It.IsAny<MultiplexedStream>(), It.IsAny<byte[]>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        _executor = new CommandExecutor(_dockerMock.Object, _streamIOMock.Object);
     }
 
     public void Dispose()
@@ -36,7 +36,7 @@ public class CommandExecutorTests : IDisposable
 
     #region ListFilesCommand Tests
 
-    [Fact(Skip = ContainerStdoutUnmockable)]
+    [Fact]
     public async Task ListFiles_ShouldReturnFileTree_WhenFilesExist()
     {
         // Arrange
@@ -66,7 +66,7 @@ f|9012|1698508800|./subdir/file3.txt";
         result.Result.Should().NotBeNull();
     }
 
-    [Fact(Skip = ContainerStdoutUnmockable)]
+    [Fact]
     public async Task ListFiles_ShouldHandleEmptyDirectory()
     {
         // Arrange
@@ -170,7 +170,7 @@ f|9012|1698508800|./subdir/file3.txt";
         diffResult.Diff.Should().BeEmpty();
     }
 
-    [Fact(Skip = ContainerStdoutUnmockable)]
+    [Fact]
     public async Task Diff_ShouldReadFromFiles_WhenPathsProvided()
     {
         // Arrange
@@ -218,7 +218,7 @@ f|9012|1698508800|./subdir/file3.txt";
 
     #region ApplyPatchCommand Tests
 
-    [Fact(Skip = ContainerStdoutUnmockable)]
+    [Fact]
     public async Task ApplyPatch_ShouldApplyPatch_WhenValidDiff()
     {
         // Arrange
@@ -258,7 +258,7 @@ f|9012|1698508800|./subdir/file3.txt";
         patchResult.HunksFailed.Should().Be(0);
     }
 
-    [Fact(Skip = ContainerStdoutUnmockable)]
+    [Fact]
     public async Task ApplyPatch_ShouldNotModifyFile_WhenDryRun()
     {
         // Arrange
@@ -331,7 +331,7 @@ f|9012|1698508800|./subdir/file3.txt";
         result.Error.Should().Contain("Target file not found");
     }
 
-    [Fact(Skip = ContainerStdoutUnmockable)]
+    [Fact]
     public async Task ApplyPatch_ShouldFail_WhenPatchCannotBeApplied()
     {
         // Arrange
@@ -379,16 +379,21 @@ f|9012|1698508800|./subdir/file3.txt";
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(execResponseMock);
 
-        var streamMock = new Mock<MultiplexedStream>(MockBehavior.Loose, null!, false);
+        // A real MultiplexedStream backed by an empty MemoryStream — CommandExecutor no longer
+        // calls its Read/WriteAsync directly (those go through IContainerExecStreamIO, mocked
+        // below), so this only needs to dispose safely. MultiplexedStream.Dispose() is
+        // non-virtual and unconditionally disposes its backing stream, so Moq cannot intercept
+        // it and a null-backed stream would NullReferenceException on disposal.
+        var stream = new MultiplexedStream(new MemoryStream(), false);
 
         _dockerMock.Setup(x => x.Exec.StartAndAttachContainerExecAsync(
                 It.IsAny<string>(),
                 It.IsAny<bool>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(streamMock.Object);
+            .ReturnsAsync(stream);
 
-        // This is simplified - in reality, you'd need to mock the stream reading
-        // For now, we're testing the logic flow
+        _streamIOMock.Setup(io => io.ReadOutputAsync(stream, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((stdout, stderr));
     }
 
     private void SetupDockerExecForFileRead(string path, string content)
@@ -402,14 +407,17 @@ f|9012|1698508800|./subdir/file3.txt";
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(execResponseMock);
 
-        // Mock stream for reading content
-        var streamMock = new Mock<MultiplexedStream>(MockBehavior.Loose, null!, false);
+        // See SetupDockerExec for why this is a real MultiplexedStream, not a Moq mock.
+        var stream = new MultiplexedStream(new MemoryStream(), false);
 
         _dockerMock.Setup(x => x.Exec.StartAndAttachContainerExecAsync(
                 execResponseMock.ID,
                 false,
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(streamMock.Object);
+            .ReturnsAsync(stream);
+
+        _streamIOMock.Setup(io => io.ReadOutputAsync(stream, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((content, ""));
     }
 
     private void SetupDockerExecForFileWrite(string path)
@@ -423,13 +431,16 @@ f|9012|1698508800|./subdir/file3.txt";
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(execResponseMock);
 
-        var streamMock = new Mock<MultiplexedStream>(MockBehavior.Loose, null!, false);
+        var stream = new MultiplexedStream(new MemoryStream(), false);
 
         _dockerMock.Setup(x => x.Exec.StartAndAttachContainerExecAsync(
                 execResponseMock.ID,
                 false,
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(streamMock.Object);
+            .ReturnsAsync(stream);
+
+        _streamIOMock.Setup(io => io.ReadOutputAsync(stream, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(("", ""));
     }
 
     private void SetupDockerExecFailure()
