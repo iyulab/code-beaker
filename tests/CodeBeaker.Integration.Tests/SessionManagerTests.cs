@@ -2,6 +2,7 @@ using CodeBeaker.Commands.Models;
 using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Core.Models;
 using CodeBeaker.Core.Sessions;
+using CodeBeaker.Integration.Tests.TestHelpers;
 using CodeBeaker.Runtimes.Deno;
 using Moq;
 using Xunit;
@@ -14,6 +15,12 @@ namespace CodeBeaker.Integration.Tests;
 public sealed class SessionManagerTests : IDisposable
 {
     private readonly SessionManager _sessionManager;
+
+    private static async Task SkipIfDockerImagesUnavailableAsync()
+    {
+        var reason = await DockerTestHelper.GetSkipReasonAsync();
+        Skip.If(reason is not null, reason);
+    }
 
     public SessionManagerTests()
     {
@@ -68,9 +75,11 @@ public sealed class SessionManagerTests : IDisposable
         return mock;
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task CreateSession_ShouldCreateActiveSession()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var config = new SessionConfig
         {
@@ -94,9 +103,11 @@ public sealed class SessionManagerTests : IDisposable
         await _sessionManager.CloseSessionAsync(session.SessionId);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task GetSession_ShouldReturnExistingSession()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var config = new SessionConfig { Language = "python" };
         var created = await _sessionManager.CreateSessionAsync(config);
@@ -123,9 +134,11 @@ public sealed class SessionManagerTests : IDisposable
         Assert.Null(session);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task ExecuteInSession_ShouldExecuteCommand()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var config = new SessionConfig { Language = "python" };
         var session = await _sessionManager.CreateSessionAsync(config);
@@ -150,9 +163,11 @@ public sealed class SessionManagerTests : IDisposable
         await _sessionManager.CloseSessionAsync(session.SessionId);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task ExecuteInSession_ShouldMaintainFilesystemState()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var config = new SessionConfig { Language = "python" };
         var session = await _sessionManager.CreateSessionAsync(config);
@@ -182,9 +197,11 @@ public sealed class SessionManagerTests : IDisposable
         await _sessionManager.CloseSessionAsync(session.SessionId);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task ExecuteInSession_ShouldThrow_ForClosedSession()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var config = new SessionConfig { Language = "python" };
         var session = await _sessionManager.CreateSessionAsync(config);
@@ -203,9 +220,11 @@ public sealed class SessionManagerTests : IDisposable
         });
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task ListSessions_ShouldReturnAllActiveSessions()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var config1 = new SessionConfig { Language = "python" };
         var config2 = new SessionConfig { Language = "javascript" };
@@ -227,9 +246,11 @@ public sealed class SessionManagerTests : IDisposable
         await _sessionManager.CloseSessionAsync(session2.SessionId);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task CloseSession_ShouldRemoveSession()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var config = new SessionConfig { Language = "python" };
         var session = await _sessionManager.CreateSessionAsync(config);
@@ -242,9 +263,11 @@ public sealed class SessionManagerTests : IDisposable
         Assert.Null(retrieved);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task CleanupExpiredSessions_ShouldRemoveExpiredSessions()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var config = new SessionConfig
         {
@@ -266,9 +289,11 @@ public sealed class SessionManagerTests : IDisposable
         Assert.Null(retrieved);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task UpdateActivity_ShouldPreventTimeout()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var config = new SessionConfig
         {

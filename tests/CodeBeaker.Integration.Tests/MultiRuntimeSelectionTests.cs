@@ -4,6 +4,7 @@ using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Core.Models;
 using CodeBeaker.Core.Runtime;
 using CodeBeaker.Core.Sessions;
+using CodeBeaker.Integration.Tests.TestHelpers;
 using CodeBeaker.Runtimes.Deno;
 using Xunit;
 
@@ -16,6 +17,12 @@ public sealed class MultiRuntimeSelectionTests : IDisposable
 {
     private readonly SessionManager _sessionManager;
 
+    private static async Task SkipIfDockerImagesUnavailableAsync()
+    {
+        var reason = await DockerTestHelper.GetSkipReasonAsync();
+        Skip.If(reason is not null, reason);
+    }
+
     public MultiRuntimeSelectionTests()
     {
         // 실제 Docker Runtime과 Deno Runtime 사용
@@ -27,9 +34,11 @@ public sealed class MultiRuntimeSelectionTests : IDisposable
         _sessionManager = new SessionManager(sessionStore, runtimes);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task CreateSession_WithDockerRuntimeType_ShouldUseDocker()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var config = new SessionConfig
         {
@@ -72,9 +81,11 @@ public sealed class MultiRuntimeSelectionTests : IDisposable
         await _sessionManager.CloseSessionAsync(session.SessionId);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task CreateSession_WithSecurityPreference_ShouldSelectDocker()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var config = new SessionConfig
         {
@@ -116,9 +127,11 @@ public sealed class MultiRuntimeSelectionTests : IDisposable
         await _sessionManager.CloseSessionAsync(session.SessionId);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task CreateSession_WithBalancedPreference_ShouldSelectAppropriateRuntime()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var config = new SessionConfig
         {
@@ -138,9 +151,11 @@ public sealed class MultiRuntimeSelectionTests : IDisposable
         await _sessionManager.CloseSessionAsync(session.SessionId);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task ExecuteInSession_WithDockerRuntime_ShouldExecuteSuccessfully()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var config = new SessionConfig
         {
@@ -168,9 +183,11 @@ public sealed class MultiRuntimeSelectionTests : IDisposable
         await _sessionManager.CloseSessionAsync(session.SessionId);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task MultipleRuntimes_ShouldCoexistAndExecuteIndependently()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var dockerConfig = new SessionConfig
         {

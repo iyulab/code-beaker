@@ -2,6 +2,7 @@ using System.Text.Json;
 using CodeBeaker.Commands.Models;
 using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Core.Sessions;
+using CodeBeaker.Integration.Tests.TestHelpers;
 using CodeBeaker.JsonRpc;
 using CodeBeaker.JsonRpc.Handlers;
 using CodeBeaker.JsonRpc.Models;
@@ -18,6 +19,12 @@ public sealed class SessionJsonRpcTests : IDisposable
 {
     private readonly SessionManager _sessionManager;
     private readonly JsonRpcRouter _router;
+
+    private static async Task SkipIfDockerImagesUnavailableAsync()
+    {
+        var reason = await DockerTestHelper.GetSkipReasonAsync();
+        Skip.If(reason is not null, reason);
+    }
 
     public SessionJsonRpcTests()
     {
@@ -37,9 +44,11 @@ public sealed class SessionJsonRpcTests : IDisposable
         _router.RegisterHandler(new SessionListHandler(_sessionManager));
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task SessionCreate_ShouldReturnSessionInfo()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var request = new JsonRpcRequest
         {
@@ -79,9 +88,11 @@ public sealed class SessionJsonRpcTests : IDisposable
         await _router.ProcessRequestAsync(closeRequest);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task SessionExecute_ShouldExecuteCommand()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         // 1. Create session
         var createRequest = new JsonRpcRequest
@@ -140,9 +151,11 @@ public sealed class SessionJsonRpcTests : IDisposable
         await _router.ProcessRequestAsync(closeRequest);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task SessionList_ShouldReturnActiveSessions()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         // Create 2 sessions
         var create1 = new JsonRpcRequest
@@ -214,9 +227,11 @@ public sealed class SessionJsonRpcTests : IDisposable
         });
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task SessionClose_ShouldCloseSession()
     {
+        await SkipIfDockerImagesUnavailableAsync();
+
         // Arrange
         var createRequest = new JsonRpcRequest
         {

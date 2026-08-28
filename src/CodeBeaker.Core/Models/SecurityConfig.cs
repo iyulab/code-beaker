@@ -71,8 +71,7 @@ public sealed class SecurityConfig
         @"rm\s+-rf\s+\/", // Dangerous rm commands
         @"dd\s+if=", // Disk operations
         @"mkfs\.", // Format commands
-        @"fork\s*\(\)", // Fork bombs
-        @":\(\)\{.*\}.*:", // Shell fork bomb pattern
+        @"\S+\s*\(\)\s*\{[^}]*\|[^}]*&[^}]*\}\s*;", // Shell fork bomb shape (any identifier, not just "fork" or ":")
         @"sudo\s+", // Privilege escalation
         @"su\s+", // User switching
     };

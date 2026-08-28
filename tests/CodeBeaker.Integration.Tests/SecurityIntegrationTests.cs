@@ -100,9 +100,11 @@ public sealed class SecurityIntegrationTests
         // Act
         var result = await secureEnv.ExecuteAsync(command, CancellationToken.None);
 
-        // Assert
+        // Assert: the workspace-containment check catches this before the
+        // blocked-pattern list is ever consulted, so it fails with its own
+        // message rather than "blocked pattern".
         Assert.False(result.Success);
-        Assert.Contains("blocked pattern", result.Error);
+        Assert.Contains("workspace directory", result.Error);
     }
 
     [Fact]
