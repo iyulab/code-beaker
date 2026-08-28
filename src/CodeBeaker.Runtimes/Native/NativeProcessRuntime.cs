@@ -126,6 +126,16 @@ public sealed class NativeProcessEnvironment(RuntimeConfig config) : IExecutionE
             }
 
             _currentProcess.Start();
+
+            // Started immediately, not after WaitForExitAsync: a child that writes enough
+            // output to fill the OS pipe buffer (~4KB on Windows) blocks on that write
+            // until someone drains the pipe. Waiting for exit first before reading either
+            // stream is the classic .NET deadlock — the child blocks on a full pipe while
+            // the parent blocks on the child ever exiting. Draining concurrently with the
+            // exit wait is what avoids it.
+            var stdoutTask = _currentProcess.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderrTask = _currentProcess.StandardError.ReadToEndAsync(cancellationToken);
+
             var timeout = config.ResourceLimits?.TimeoutSeconds ?? 300;
             var completed = await WaitForExitAsync(_currentProcess, TimeSpan.FromSeconds(timeout), cancellationToken);
 
@@ -141,8 +151,8 @@ public sealed class NativeProcessEnvironment(RuntimeConfig config) : IExecutionE
                 };
             }
 
-            var output = await _currentProcess.StandardOutput.ReadToEndAsync(cancellationToken);
-            var error = await _currentProcess.StandardError.ReadToEndAsync(cancellationToken);
+            var output = await stdoutTask;
+            var error = await stderrTask;
             stopwatch.Stop();
 
             return new CommandResult

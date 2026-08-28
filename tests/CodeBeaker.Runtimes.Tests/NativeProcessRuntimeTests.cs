@@ -104,6 +104,49 @@ public sealed class NativeProcessRuntimeTests
         }
     }
 
+    /// <summary>
+    /// Regression for a wait-before-read deadlock: <c>ExecuteShellAsync</c> used to await
+    /// process exit before reading <c>StandardOutput</c>/<c>StandardError</c> — a child
+    /// that fills the OS pipe buffer (a few KB) before exiting blocks on the next write
+    /// forever, while the parent blocks on the child ever exiting. A short
+    /// <c>TimeoutSeconds</c> makes this reproduce fast if the deadlock regresses (the call
+    /// would fail with "Execution timeout" instead of completing).
+    /// </summary>
+    [Fact]
+    public async Task ExecuteShellCommand_WithOutputLargerThanThePipeBuffer_DoesNotDeadlock()
+    {
+        var workspace = Path.Combine(Path.GetTempPath(), $"native-test-{Guid.NewGuid():N}");
+        try
+        {
+            var environment = await _runtime.CreateEnvironmentAsync(new RuntimeConfig
+            {
+                Environment = "native",
+                WorkspaceDirectory = workspace,
+                ResourceLimits = new ResourceLimits { TimeoutSeconds = 15 },
+            });
+
+            // ~880KB of stdout — comfortably past any OS pipe buffer size (a few KB to 64KB).
+            var result = await environment.ExecuteAsync(new ExecuteShellCommand
+            {
+                CommandName = "cmd",
+                Args = ["/c", "for", "/L", "%i", "in", "(1,1,20000)", "do", "@echo", new string('x', 40)],
+            });
+
+            Assert.True(result.Success, result.Error);
+            Assert.NotNull(result.Result);
+            Assert.True(((string)result.Result!).Length > 800_000);
+
+            await environment.DisposeAsync();
+        }
+        finally
+        {
+            if (Directory.Exists(workspace))
+            {
+                Directory.Delete(workspace, true);
+            }
+        }
+    }
+
     [Fact]
     public async Task ExecuteAsync_WithUnsupportedCommandType_ReturnsFailureNotSupportedException()
     {
