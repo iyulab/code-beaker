@@ -81,6 +81,10 @@ public sealed class SessionManager : ISessionManager, IDisposable
         }
 
         // 2. RuntimeConfig 생성
+        // Permissions is honored only by DenoRuntime today (see its
+        // CreateProcessStartInfo) — other runtimes (Native/Node/Python) can't
+        // enforce process-level permissions and ignore this struct entirely.
+        var security = config.Security;
         var runtimeConfig = new RuntimeConfig
         {
             Environment = config.Language,
@@ -95,10 +99,16 @@ public sealed class SessionManager : ISessionManager, IDisposable
             },
             Permissions = new PermissionSettings
             {
+                // Filesystem access always stays workspace-scoped regardless of
+                // SandboxRestrictFilesystem — DenoRuntime's flag builder only
+                // knows how to emit `--allow-read=<path>` per path, not a bare
+                // `--allow-read` for unrestricted access, so there is no way to
+                // honor SandboxRestrictFilesystem=false yet.
                 AllowRead = new List<string> { "/workspace", "/tmp" },
                 AllowWrite = new List<string> { "/workspace", "/tmp" },
-                AllowNet = false,
-                AllowEnv = false
+                AllowNet = !security.SandboxDisableNetwork,
+                AllowEnv = false,
+                AllowRun = !security.SandboxDisableShellCommands
             }
         };
 
