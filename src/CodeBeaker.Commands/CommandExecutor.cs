@@ -15,9 +15,9 @@ namespace CodeBeaker.Commands;
 /// </summary>
 public sealed class CommandExecutor : ICommandExecutor
 {
-    private readonly DockerClient _docker;
+    private readonly IDockerClient _docker;
 
-    public CommandExecutor(DockerClient docker)
+    public CommandExecutor(IDockerClient docker)
     {
         _docker = docker;
     }
@@ -90,28 +90,35 @@ public sealed class CommandExecutor : ICommandExecutor
         string containerId,
         CancellationToken cancellationToken)
     {
-        // Use 'tee' command to write file (no shell parsing overhead)
-        var execConfig = new ContainerExecCreateParameters
+        try
         {
-            Cmd = new[] { "tee", command.Path },
-            AttachStdin = true,
-            AttachStdout = true,
-            AttachStderr = true,
-            WorkingDir = "/workspace"
-        };
+            // Use 'tee' command to write file (no shell parsing overhead)
+            var execConfig = new ContainerExecCreateParameters
+            {
+                Cmd = new[] { "tee", command.Path },
+                AttachStdin = true,
+                AttachStdout = true,
+                AttachStderr = true,
+                WorkingDir = "/workspace"
+            };
 
-        var execResponse = await _docker.Exec.ExecCreateContainerAsync(containerId, execConfig, cancellationToken);
+            var execResponse = await _docker.Exec.ExecCreateContainerAsync(containerId, execConfig, cancellationToken);
 
-        using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(
-            execResponse.ID,
-            tty: false,
-            cancellationToken);
+            using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(
+                execResponse.ID,
+                tty: false,
+                cancellationToken);
 
-        // Write content to stdin
-        var bytes = Encoding.UTF8.GetBytes(command.Content);
-        await stream.WriteAsync(bytes, 0, bytes.Length, cancellationToken);
+            // Write content to stdin
+            var bytes = Encoding.UTF8.GetBytes(command.Content);
+            await stream.WriteAsync(bytes, 0, bytes.Length, cancellationToken);
 
-        return CommandResult.Ok(new { path = command.Path, bytes = bytes.Length });
+            return CommandResult.Ok(new { path = command.Path, bytes = bytes.Length });
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Fail($"Failed to write file: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -122,24 +129,31 @@ public sealed class CommandExecutor : ICommandExecutor
         string containerId,
         CancellationToken cancellationToken)
     {
-        var execConfig = new ContainerExecCreateParameters
+        try
         {
-            Cmd = new[] { "cat", command.Path },
-            AttachStdout = true,
-            AttachStderr = true,
-            WorkingDir = "/workspace"
-        };
+            var execConfig = new ContainerExecCreateParameters
+            {
+                Cmd = new[] { "cat", command.Path },
+                AttachStdout = true,
+                AttachStderr = true,
+                WorkingDir = "/workspace"
+            };
 
-        var execResponse = await _docker.Exec.ExecCreateContainerAsync(containerId, execConfig, cancellationToken);
+            var execResponse = await _docker.Exec.ExecCreateContainerAsync(containerId, execConfig, cancellationToken);
 
-        using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(
-            execResponse.ID,
-            tty: false,
-            cancellationToken);
+            using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(
+                execResponse.ID,
+                tty: false,
+                cancellationToken);
 
-        var output = await ReadStreamAsync(stream, cancellationToken);
+            var output = await ReadStreamAsync(stream, cancellationToken);
 
-        return CommandResult.Ok(new { path = command.Path, content = output.Stdout });
+            return CommandResult.Ok(new { path = command.Path, content = output.Stdout });
+        }
+        catch (Exception ex)
+        {
+            return CommandResult.Fail($"Failed to read file: {ex.Message}");
+        }
     }
 
     /// <summary>
