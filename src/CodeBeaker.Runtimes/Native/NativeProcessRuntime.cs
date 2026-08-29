@@ -135,13 +135,38 @@ public sealed class NativeProcessEnvironment(RuntimeConfig config) : IExecutionE
             // exit wait is what avoids it.
             var stdoutTask = _currentProcess.StandardOutput.ReadToEndAsync(cancellationToken);
             var stderrTask = _currentProcess.StandardError.ReadToEndAsync(cancellationToken);
+            var exitTask = _currentProcess.WaitForExitAsync(cancellationToken);
 
             var timeout = config.ResourceLimits?.TimeoutSeconds ?? 300;
-            var completed = await WaitForExitAsync(_currentProcess, TimeSpan.FromSeconds(timeout), cancellationToken);
 
-            if (!completed)
+            // The timeout has to cover exit AND both drains as one bounded operation, not
+            // just the exit wait: a command can launch a detached descendant that outlives
+            // it (e.g. Windows "start /b" starting a dev server) and inherits the redirected
+            // stdout/stderr pipe handles. The immediate process then exits well within the
+            // timeout, but the pipe's write end stays open for as long as that descendant
+            // keeps running — so ReadToEndAsync never sees EOF and would hang forever if the
+            // timeout only gated the exit wait.
+            var allDone = Task.WhenAll(exitTask, stdoutTask, stderrTask);
+            var winner = await Task.WhenAny(allDone, Task.Delay(TimeSpan.FromSeconds(timeout), cancellationToken));
+
+            if (winner != allDone)
             {
-                _currentProcess.Kill(true);
+                // Kill(entireProcessTree: true) is what actually resolves both hang shapes:
+                // if the immediate process is still running, this is the same fix as before;
+                // if it already exited but a descendant lingers, this finds and kills that
+                // descendant too (by walking live processes for the recorded PID as parent),
+                // which releases the handle and is why this works even when _currentProcess
+                // itself has already exited.
+                try
+                {
+                    _currentProcess.Kill(entireProcessTree: true);
+                }
+                catch (InvalidOperationException)
+                {
+                    // Already exited by the time we got here — nothing to kill for it, but
+                    // Kill(true) still walks and kills any lingering descendants.
+                }
+
                 stopwatch.Stop();
                 return new CommandResult
                 {
@@ -171,22 +196,6 @@ public sealed class NativeProcessEnvironment(RuntimeConfig config) : IExecutionE
         finally
         {
             _currentProcess = null;
-        }
-    }
-
-    private static async Task<bool> WaitForExitAsync(Process process, TimeSpan timeout, CancellationToken cancellationToken)
-    {
-        using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        cts.CancelAfter(timeout);
-
-        try
-        {
-            await process.WaitForExitAsync(cts.Token);
-            return true;
-        }
-        catch (OperationCanceledException)
-        {
-            return false;
         }
     }
 

@@ -147,6 +147,54 @@ public sealed class NativeProcessRuntimeTests
         }
     }
 
+    /// <summary>
+    /// Regression for a second, distinct hang in the same area: fixing the wait-before-read
+    /// deadlock (above) only bounds the wait for the *immediate* process's exit. If that
+    /// process launches a detached grandchild (e.g. Windows <c>start /b</c> starting a dev
+    /// server) and exits itself well before the grandchild does, the code used to fall
+    /// through to an unbounded <c>await stdoutTask; await stderrTask;</c> — and on Windows,
+    /// a grandchild can inherit the parent's redirected stdout/stderr pipe handles, so the
+    /// pipe's write end stays open (and <c>ReadToEndAsync</c> never sees EOF) for as long as
+    /// the grandchild keeps running, timeout or not.
+    /// </summary>
+    [Fact]
+    public async Task ExecuteShellCommand_WithDetachedGrandchildStillRunning_TimesOutInsteadOfHangingForever()
+    {
+        var workspace = Path.Combine(Path.GetTempPath(), $"native-test-{Guid.NewGuid():N}");
+        try
+        {
+            var environment = await _runtime.CreateEnvironmentAsync(new RuntimeConfig
+            {
+                Environment = "native",
+                WorkspaceDirectory = workspace,
+                ResourceLimits = new ResourceLimits { TimeoutSeconds = 5 },
+            });
+
+            // "start /b" is meant to launch a detached background process and let the outer
+            // "cmd /c" exit immediately — but a continuously-writing, indefinitely-running
+            // grandchild ("ping -t", which never stops on its own) is what actually exposes
+            // whether that detachment holds: if it doesn't, or if it inherits the outer
+            // process's redirected stdout/stderr pipe either way, the read never sees EOF.
+            var result = await environment.ExecuteAsync(new ExecuteShellCommand
+            {
+                CommandName = "cmd",
+                Args = ["/c", "start", "/b", "ping", "-t", "127.0.0.1"],
+            });
+
+            Assert.False(result.Success);
+            Assert.Contains("timeout", result.Error, StringComparison.OrdinalIgnoreCase);
+
+            await environment.DisposeAsync();
+        }
+        finally
+        {
+            if (Directory.Exists(workspace))
+            {
+                Directory.Delete(workspace, true);
+            }
+        }
+    }
+
     [Fact]
     public async Task ExecuteAsync_WithUnsupportedCommandType_ReturnsFailureNotSupportedException()
     {
