@@ -151,6 +151,7 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
         {
             // Docker 이미지 결정
             var dockerImage = GetDefaultImage(_config.Environment);
+            await EnsureImageAsync(dockerImage, cancellationToken);
 
             // 컨테이너 생성 (장기 실행)
             var createParams = new CreateContainerParameters
@@ -542,9 +543,16 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
         return hostConfig;
     }
 
+    /// <summary>
+    /// 레지스트리 호스트(+선택적 경로), 예: <c>ghcr.io/your-org</c>. 설정하면 런타임 이미지를
+    /// 로컬 Docker 데몬에 미리 존재해야 하는 대신 이 레지스트리에서 pull한다. 미설정 시(기본값)
+    /// 기존 로컬 빌드 워크플로 그대로 동작한다.
+    /// </summary>
+    private const string ImageRegistryEnvironmentVariable = "CODEBEAKER_IMAGE_REGISTRY";
+
     private static string GetDefaultImage(string environment)
     {
-        return environment.ToLowerInvariant() switch
+        var image = environment.ToLowerInvariant() switch
         {
             "python" => "codebeaker-python:latest",
             "javascript" or "js" or "nodejs" => "codebeaker-nodejs:latest",
@@ -552,5 +560,37 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
             "csharp" or "cs" or "dotnet" => "codebeaker-dotnet:latest",
             _ => throw new NotSupportedException($"Environment not supported: {environment}")
         };
+
+        var registry = Environment.GetEnvironmentVariable(ImageRegistryEnvironmentVariable);
+        return string.IsNullOrWhiteSpace(registry) ? image : $"{registry.TrimEnd('/')}/{image}";
+    }
+
+    /// <summary>
+    /// 데몬에 <paramref name="image"/>가 없으면 pull한다 — <c>docker run</c>이 하는 것과
+    /// 같은 온디맨드 fetch이지만 Docker.DotNet의 <c>CreateContainerAsync</c>는 이걸 직접
+    /// 해주지 않는다. 이게 없으면 레지스트리 이미지(<see cref="ImageRegistryEnvironmentVariable"/>)를
+    /// 써도 세션 시작 전에 머신마다 수동 pull이 필요해진다.
+    /// </summary>
+    private async Task EnsureImageAsync(string image, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _docker.Images.InspectImageAsync(image, cancellationToken);
+            return;
+        }
+        catch (DockerImageNotFoundException)
+        {
+            // 로컬에 캐시돼 있지 않음 — 아래에서 pull한다.
+        }
+
+        var separator = image.LastIndexOf(':');
+        var fromImage = separator < 0 ? image : image[..separator];
+        var tag = separator < 0 ? "latest" : image[(separator + 1)..];
+
+        await _docker.Images.CreateImageAsync(
+            new ImagesCreateParameters { FromImage = fromImage, Tag = tag },
+            authConfig: null,
+            progress: new Progress<JSONMessage>(),
+            cancellationToken);
     }
 }

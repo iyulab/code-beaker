@@ -18,7 +18,7 @@ $images = @(
     @{Name=".NET 8"; Tag="codebeaker-dotnet:latest"; Path="docker/runtimes/csharp"}
 )
 
-$rootDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$rootDir = Split-Path -Parent $PSScriptRoot
 Push-Location $rootDir
 
 try {

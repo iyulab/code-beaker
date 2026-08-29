@@ -154,6 +154,8 @@ docker build -t codebeaker-dotnet:latest docker/runtimes/csharp
 docker images | grep codebeaker
 ```
 
+**로컬 빌드 없이 레지스트리에서 pull하려면:** 태그 push 시 CI(`.github/workflows/ci.yml`)가 `ghcr.io/<owner>/codebeaker-{python,nodejs,golang,dotnet}`로 이미지를 발행한다. `CODEBEAKER_IMAGE_REGISTRY` 환경 변수를 레지스트리 경로(예: `ghcr.io/<owner>`)로 설정하면 `DockerRuntime`이 로컬에 이미지가 없을 때 그 레지스트리에서 자동으로 pull한다 — 이 변수를 설정하지 않으면 기존처럼 로컬에 미리 빌드된 이미지를 그대로 쓴다.
+
 ### Step 3: 큐/저장소 디렉토리 생성
 
 **Windows:**
