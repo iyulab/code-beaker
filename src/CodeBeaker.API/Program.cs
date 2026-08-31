@@ -5,7 +5,6 @@ using CodeBeaker.API.JsonRpc.Handlers;
 using CodeBeaker.API.Metrics;
 using CodeBeaker.API.WebSocket;
 using CodeBeaker.Core.Interfaces;
-using CodeBeaker.Core.Queue;
 using CodeBeaker.Core.Sessions;
 using CodeBeaker.Core.Storage;
 using CodeBeaker.JsonRpc;
@@ -52,14 +51,6 @@ try
 
     // Phase 8: Use Serilog for logging
     builder.Host.UseSerilog();
-
-    // 설정 로드
-    var queuePath = builder.Configuration.GetValue<string>("Queue:Path") ?? Path.Combine(Path.GetTempPath(), "codebeaker-queue");
-    var storagePath = builder.Configuration.GetValue<string>("Storage:Path") ?? Path.Combine(Path.GetTempPath(), "codebeaker-storage");
-
-    // 의존성 주입 설정
-    builder.Services.AddSingleton<IQueue>(sp => new FileQueue(queuePath));
-    builder.Services.AddSingleton<IStorage>(sp => new FileStorage(storagePath));
 
     // Docker Client 등록 (Phase 6.3 - Docker 관련 서비스 공유)
     builder.Services.AddSingleton<Docker.DotNet.DockerClient>(sp =>
@@ -135,15 +126,6 @@ try
         var handlers = new CodeBeaker.JsonRpc.Interfaces.IJsonRpcHandler[]
         {
         new InitializeHandler(),
-        new ExecutionRunHandler(
-            sp.GetRequiredService<IQueue>(),
-            sp.GetRequiredService<IStorage>(),
-            sp.GetRequiredService<ILogger<ExecutionRunHandler>>()
-        ),
-        new ExecutionStatusHandler(
-            sp.GetRequiredService<IStorage>(),
-            sp.GetRequiredService<ILogger<ExecutionStatusHandler>>()
-        ),
         new LanguageListHandler(),
         // Session handlers
         new SessionCreateHandler(sessionManager),
@@ -158,7 +140,6 @@ try
     });
 
     builder.Services.AddSingleton<WebSocketHandler>();
-    builder.Services.AddSingleton<StreamingExecutor>();
 
     // 컨트롤러 추가
     builder.Services.AddControllers();
@@ -213,14 +194,6 @@ try
         .AddCheck<SessionManagerHealthCheck>(
             "session_manager",
             failureStatus: HealthStatus.Unhealthy,
-            tags: new[] { "ready" })
-        .AddCheck<StorageHealthCheck>(
-            "storage",
-            failureStatus: HealthStatus.Unhealthy,
-            tags: new[] { "ready" })
-        .AddCheck<QueueHealthCheck>(
-            "queue",
-            failureStatus: HealthStatus.Degraded,
             tags: new[] { "ready" });
 
     var app = builder.Build();
@@ -369,8 +342,6 @@ try
 
     // 시작 로그
     app.Logger.LogInformation("CodeBeaker API starting...");
-    app.Logger.LogInformation("Queue path: {QueuePath}", queuePath);
-    app.Logger.LogInformation("Storage path: {StoragePath}", storagePath);
     app.Logger.LogInformation("WebSocket endpoint: /ws/jsonrpc");
     app.Logger.LogInformation("Metrics endpoint: /metrics");
 

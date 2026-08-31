@@ -28,8 +28,6 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - Queue__Path=/data/queue
-      - Storage__Path=/data/storage
       - Redis__ConnectionString=redis:6379
     volumes:
       - codebeaker-data:/data
@@ -43,25 +41,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  worker:
-    build:
-      context: .
-      dockerfile: src/CodeBeaker.Worker/Dockerfile
-    container_name: codebeaker-worker
-    environment:
-      - Queue__Path=/data/queue
-      - Storage__Path=/data/storage
-      - Worker__MaxConcurrency=10
-      - Worker__PollIntervalSeconds=1
-      - Worker__MaxRetries=3
-    volumes:
-      - codebeaker-data:/data
-      - /var/run/docker.sock:/var/run/docker.sock  # Docker-in-Docker
-    networks:
-      - codebeaker-network
-    depends_on:
-      - api
 
 volumes:
   codebeaker-data:

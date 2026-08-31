@@ -75,7 +75,7 @@
 │  │  - session.execute               │   │
 │  │  - session.list                  │   │
 │  │  - session.close                 │   │
-│  │  - execution.run (legacy)        │   │
+│  │  - initialize / language.list    │   │
 │  └──────────────────────────────────┘   │
 │                                          │
 │  ┌──────────────────────────────────┐   │
@@ -469,12 +469,10 @@ src/
 ├── CodeBeaker.API/             (API 서버)
 ├── CodeBeaker.Commands/        (Command 시스템)
 ├── CodeBeaker.Core/            (핵심 로직)
-│   ├── Docker/
 │   ├── Sessions/
 │   └── Interfaces/
 ├── CodeBeaker.JsonRpc/         (JSON-RPC 라우터)
-├── CodeBeaker.Runtimes/        (언어별 런타임)
-└── CodeBeaker.Worker/          (백그라운드 워커)
+└── CodeBeaker.Runtimes/        (언어별 런타임)
 
 tests/
 ├── CodeBeaker.Core.Tests/

@@ -505,8 +505,7 @@ CodeBeaker/
 │   │   ├── Node/                 # Node.js runtime (NEW)
 │   │   └── Python/               # Python runtime (NEW)
 │   ├── CodeBeaker.JsonRpc/       # JSON-RPC router
-│   ├── CodeBeaker.API/           # WebSocket API
-│   └── CodeBeaker.Worker/        # Background worker
+│   └── CodeBeaker.API/           # WebSocket API
 ├── tests/
 │   ├── CodeBeaker.Core.Tests/   # Unit tests
 │   └── CodeBeaker.Integration.Tests/ # Integration tests

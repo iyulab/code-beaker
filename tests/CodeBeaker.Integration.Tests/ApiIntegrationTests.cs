@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using System.Text.Json;
 using CodeBeaker.Integration.Tests.TestHelpers;
 using FluentAssertions;
 using Xunit;
@@ -80,123 +79,6 @@ public class ApiIntegrationTests : IClassFixture<ApiTestFixture>
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
-    [Fact]
-    public async Task ExecuteCode_WithValidRequest_ShouldReturnExecutionId()
-    {
-        // Arrange
-        var request = new
-        {
-            code = "print('Hello World')",
-            language = "python"
-        };
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/api/execution", request);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-
-        var result = await response.Content.ReadFromJsonAsync<ExecuteResponse>();
-        result.Should().NotBeNull();
-        result!.ExecutionId.Should().NotBeNullOrEmpty();
-        result.Status.Should().Be("pending");
-        result.CreatedAt.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(5));
-    }
-
-    [Fact]
-    public async Task ExecuteCode_WithUnsupportedLanguage_ShouldReturnUnprocessableEntity()
-    {
-        // Arrange
-        var request = new
-        {
-            code = "console.log('test')",
-            language = "ruby"
-        };
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/api/execution", request);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-    }
-
-    [Fact]
-    public async Task ExecuteCode_WithEmptyCode_ShouldReturnBadRequest()
-    {
-        // Arrange
-        var request = new
-        {
-            code = "",
-            language = "python"
-        };
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/api/execution", request);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
-    }
-
-    [Fact]
-    public async Task GetExecutionStatus_WithValidId_ShouldReturnStatus()
-    {
-        // Arrange - 먼저 실행 생성
-        var request = new
-        {
-            code = "print('test')",
-            language = "python"
-        };
-        var createResponse = await _client.PostAsJsonAsync("/api/execution", request);
-        var createResult = await createResponse.Content.ReadFromJsonAsync<ExecuteResponse>();
-
-        // Act - 실행 상태 조회
-        // Note: Worker가 실행되지 않는 테스트 환경에서는 Storage에 결과가 없어 404가 정상
-        // 실제 프로덕션에서는 Worker가 실행을 처리하여 결과를 Storage에 저장함
-        var response = await _client.GetAsync($"/api/execution/{createResult!.ExecutionId}");
-
-        // Assert - 테스트 환경에서는 Worker가 없으므로 404가 예상됨
-        // 실행 ID가 생성되었고 큐에 제출되었음을 이미 확인함
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-
-        // 실행 ID가 유효하게 생성되었는지만 확인
-        createResult.Should().NotBeNull();
-        createResult.ExecutionId.Should().NotBeNullOrEmpty();
-        createResult.Status.Should().Be("pending");
-    }
-
-    [Fact]
-    public async Task GetExecutionStatus_WithInvalidId_ShouldReturnNotFound()
-    {
-        // Act
-        var response = await _client.GetAsync("/api/execution/invalid-id");
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
-    }
-
-    [Fact]
-    public async Task ExecuteCode_WithConfig_ShouldAcceptConfiguration()
-    {
-        // Arrange
-        var request = new
-        {
-            code = "print('test')",
-            language = "python",
-            config = new
-            {
-                timeout = 10,
-                memoryLimit = 512,
-                cpuLimit = 1.0
-            }
-        };
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/api/execution", request);
-
-        // Assert
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-    }
-
     // DTO classes for deserialization
     private record LanguageInfo(
         string Name,
@@ -204,24 +86,5 @@ public class ApiIntegrationTests : IClassFixture<ApiTestFixture>
         string Version,
         List<string> Aliases,
         string DockerImage
-    );
-
-    private record ExecuteResponse(
-        string ExecutionId,
-        string Status,
-        DateTime CreatedAt
-    );
-
-    private record StatusResponse(
-        string ExecutionId,
-        string Status,
-        int? ExitCode,
-        string? Stdout,
-        string? Stderr,
-        long? DurationMs,
-        bool? Timeout,
-        string? ErrorType,
-        DateTime CreatedAt,
-        DateTime? CompletedAt
     );
 }

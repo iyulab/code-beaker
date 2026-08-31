@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using CodeBeaker.Commands;
 using CodeBeaker.Commands.Models;
-using CodeBeaker.Core.Docker;
 using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Core.Models;
 using CodeBeaker.Core.Runtime;

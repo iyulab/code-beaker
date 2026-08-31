@@ -61,10 +61,10 @@ CodeBeaker는 **Multi-Runtime 지원 세션 기반 코드 실행 플랫폼**으�
 │            │                     │                        │
 │            ▼                     ▼                        │
 │  ┌──────────────────┐  ┌──────────────────┐              │
-│  │ Session Handlers │  │ Legacy Handlers  │              │
-│  │ - create         │  │ - execution.run  │              │
-│  │ - execute        │  │ - language.list  │              │
-│  │ - list           │  │ - initialize     │              │
+│  │ Session Handlers │  │ Metadata Handlers│              │
+│  │ - create         │  │ - language.list  │              │
+│  │ - execute        │  │ - initialize     │              │
+│  │ - list           │  │                  │              │
 │  │ - close          │  │                  │              │
 │  └────────┬─────────┘  └──────────────────┘              │
 │           │                                               │
@@ -433,15 +433,13 @@ public interface IJsonRpcHandler
 }
 ```
 
-#### 등록된 메서드 (8개)
+#### 등록된 메서드 (6개)
 ```
-Legacy:
+Metadata:
 - initialize
-- execution.run
-- execution.status
 - language.list
 
-Session (Phase 3):
+Session:
 - session.create
 - session.execute
 - session.list
