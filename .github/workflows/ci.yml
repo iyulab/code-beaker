@@ -116,6 +116,26 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    # Trivy's filesystem scan below only sees NuGet advisories through a
+    # packages.lock.json, which this repo doesn't commit — without this step
+    # a vulnerable PackageReference (transitive included) goes undetected by CI.
+    - name: Check for vulnerable NuGet packages
+      run: |
+        report=$(dotnet list package --vulnerable --include-transitive 2>&1)
+        echo "$report"
+        if echo "$report" | grep -q "has the following vulnerable packages"; then
+          echo "::error::Vulnerable NuGet package(s) detected — see the report above."
+          exit 1
+        fi
+
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
       with:
@@ -180,10 +200,6 @@ jobs:
         dotnet publish src/CodeBeaker.API/CodeBeaker.API.csproj \
           --configuration Release \
           --output ./publish/api
-
-        dotnet publish src/CodeBeaker.Worker/CodeBeaker.Worker.csproj \
-          --configuration Release \
-          --output ./publish/worker
 
     - name: Create release archive
       run: |
