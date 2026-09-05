@@ -59,8 +59,9 @@ try
             ? "npipe://./pipe/docker_engine"
             : "unix:///var/run/docker.sock";
 
-        return new Docker.DotNet.DockerClientConfiguration(new Uri(dockerHost))
-            .CreateClient();
+        return new Docker.DotNet.DockerClientBuilder()
+            .WithEndpoint(new Uri(dockerHost))
+            .Build();
     });
 
     // Multi-Runtime 등록

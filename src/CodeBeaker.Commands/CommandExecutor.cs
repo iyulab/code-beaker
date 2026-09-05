@@ -104,11 +104,11 @@ public sealed class CommandExecutor : ICommandExecutor
                 WorkingDir = "/workspace"
             };
 
-            var execResponse = await _docker.Exec.ExecCreateContainerAsync(containerId, execConfig, cancellationToken);
+            var execResponse = await _docker.Exec.CreateContainerExecAsync(containerId, execConfig, cancellationToken);
 
-            using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(
+            using var stream = await _docker.Exec.StartContainerExecAsync(
                 execResponse.ID,
-                tty: false,
+                new ContainerExecStartParameters { TTY = false },
                 cancellationToken);
 
             // Write content to stdin
@@ -141,11 +141,11 @@ public sealed class CommandExecutor : ICommandExecutor
                 WorkingDir = "/workspace"
             };
 
-            var execResponse = await _docker.Exec.ExecCreateContainerAsync(containerId, execConfig, cancellationToken);
+            var execResponse = await _docker.Exec.CreateContainerExecAsync(containerId, execConfig, cancellationToken);
 
-            using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(
+            using var stream = await _docker.Exec.StartContainerExecAsync(
                 execResponse.ID,
-                tty: false,
+                new ContainerExecStartParameters { TTY = false },
                 cancellationToken);
 
             var output = await ReadStreamAsync(stream, cancellationToken);
@@ -178,8 +178,8 @@ public sealed class CommandExecutor : ICommandExecutor
             WorkingDir = "/workspace"
         };
 
-        var execResponse = await _docker.Exec.ExecCreateContainerAsync(containerId, execConfig, cancellationToken);
-        using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(execResponse.ID, false, cancellationToken);
+        var execResponse = await _docker.Exec.CreateContainerExecAsync(containerId, execConfig, cancellationToken);
+        using var stream = await _docker.Exec.StartContainerExecAsync(execResponse.ID, new ContainerExecStartParameters { TTY = false }, cancellationToken);
 
         var output = await ReadStreamAsync(stream, cancellationToken);
 
@@ -206,8 +206,8 @@ public sealed class CommandExecutor : ICommandExecutor
             WorkingDir = "/workspace"
         };
 
-        var execResponse = await _docker.Exec.ExecCreateContainerAsync(containerId, execConfig, cancellationToken);
-        using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(execResponse.ID, false, cancellationToken);
+        var execResponse = await _docker.Exec.CreateContainerExecAsync(containerId, execConfig, cancellationToken);
+        using var stream = await _docker.Exec.StartContainerExecAsync(execResponse.ID, new ContainerExecStartParameters { TTY = false }, cancellationToken);
 
         var output = await ReadStreamAsync(stream, cancellationToken);
 
@@ -234,8 +234,8 @@ public sealed class CommandExecutor : ICommandExecutor
             Env = command.Environment?.Select(kv => $"{kv.Key}={kv.Value}").ToList()
         };
 
-        var execResponse = await _docker.Exec.ExecCreateContainerAsync(containerId, execConfig, cancellationToken);
-        using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(execResponse.ID, false, cancellationToken);
+        var execResponse = await _docker.Exec.CreateContainerExecAsync(containerId, execConfig, cancellationToken);
+        using var stream = await _docker.Exec.StartContainerExecAsync(execResponse.ID, new ContainerExecStartParameters { TTY = false }, cancellationToken);
 
         var output = await ReadStreamAsync(stream, cancellationToken);
 
@@ -280,8 +280,8 @@ public sealed class CommandExecutor : ICommandExecutor
                 WorkingDir = "/workspace"
             };
 
-            var execResponse = await _docker.Exec.ExecCreateContainerAsync(containerId, execConfig, cancellationToken);
-            using var stream = await _docker.Exec.StartAndAttachContainerExecAsync(execResponse.ID, false, cancellationToken);
+            var execResponse = await _docker.Exec.CreateContainerExecAsync(containerId, execConfig, cancellationToken);
+            using var stream = await _docker.Exec.StartContainerExecAsync(execResponse.ID, new ContainerExecStartParameters { TTY = false }, cancellationToken);
 
             var output = await ReadStreamAsync(stream, cancellationToken);
 

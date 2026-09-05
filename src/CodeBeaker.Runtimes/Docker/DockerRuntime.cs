@@ -20,8 +20,9 @@ public sealed class DockerRuntime : IExecutionRuntime
             ? "npipe://./pipe/docker_engine"
             : "unix:///var/run/docker.sock";
 
-        _docker = new DockerClientConfiguration(new Uri(dockerHost))
-            .CreateClient();
+        _docker = new DockerClientBuilder()
+            .WithEndpoint(new Uri(dockerHost))
+            .Build();
         _commandExecutor = new CommandExecutor(_docker);
     }
 
@@ -342,9 +343,9 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
                 Timestamp = DateTime.UtcNow,
                 MemoryUsageBytes = (long)memoryUsage,
                 MemoryPeakBytes = (long)(stats.MemoryStats.MaxUsage),
-                MemoryUsagePercent = memoryPercent,
+                MemoryUsagePercent = memoryPercent ?? 0,
                 CpuUsageNanoseconds = (long)stats.CPUStats.CPUUsage.TotalUsage,
-                CpuUsagePercent = cpuPercent,
+                CpuUsagePercent = cpuPercent ?? 0,
                 CpuThrottledMicroseconds = (long)(stats.CPUStats.ThrottlingData?.ThrottledTime ?? 0) / 1000,
                 DiskReadBytes = diskRead,
                 DiskWriteBytes = diskWrite,

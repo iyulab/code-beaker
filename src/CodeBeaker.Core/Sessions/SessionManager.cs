@@ -30,8 +30,9 @@ public sealed class SessionManager : ISessionManager, IDisposable
             ? "npipe://./pipe/docker_engine"
             : "unix:///var/run/docker.sock";
 
-        _docker = new DockerClientConfiguration(new Uri(dockerHost))
-            .CreateClient();
+        _docker = new DockerClientBuilder()
+            .WithEndpoint(new Uri(dockerHost))
+            .Build();
         _commandExecutor = new CommandExecutor(_docker);
         _runtimeSelector = new RuntimeSelector(runtimes);
     }

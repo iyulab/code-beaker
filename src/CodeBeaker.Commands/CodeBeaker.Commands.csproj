@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Docker.DotNet" Version="3.125.15" />
+    <PackageReference Include="Docker.DotNet.Enhanced" Version="4.3.3" />
   </ItemGroup>
 
 </Project>

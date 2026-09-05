@@ -8,7 +8,7 @@ namespace CodeBeaker.Integration.Tests.TestHelpers;
 /// </summary>
 public static class DockerTestHelper
 {
-    private static readonly DockerClient _client = new DockerClientConfiguration().CreateClient();
+    private static readonly DockerClient _client = new DockerClientBuilder().Build();
     private static readonly Dictionary<string, bool> _imageCache = new();
 
     /// <summary>
