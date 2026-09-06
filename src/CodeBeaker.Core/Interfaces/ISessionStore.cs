@@ -32,7 +32,11 @@ public interface ISessionStore
     Task<bool> ExistsAsync(string sessionId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 세션 활동 시각 업데이트
+    /// 세션 활동 시각 업데이트.
+    ///
+    /// 이름 그대로 <c>LastActivity</c> 만 갱신한다 — 실행 횟수나 세션 상태는 저장소가 아니라
+    /// 호출자(<c>SessionManager</c>)가 소유한다. 저장소가 함께 바꾸면 호출자가 뒤이어 저장하는
+    /// 스냅샷에 조용히 덮어써져, 두 곳이 같은 필드를 쓰면서 한쪽만 이기는 상태가 된다.
     /// </summary>
     Task UpdateActivityAsync(string sessionId, CancellationToken cancellationToken = default);
 

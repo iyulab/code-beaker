@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Docker.DotNet;
 using Docker.DotNet.Models;
 
@@ -9,15 +10,20 @@ namespace CodeBeaker.Integration.Tests.TestHelpers;
 public static class DockerTestHelper
 {
     private static readonly DockerClient _client = new DockerClientBuilder().Build();
-    private static readonly Dictionary<string, bool> _imageCache = new();
+
+    // Only presence is cached, and only positively. A negative answer can come from a
+    // transient daemon error, and caching that would turn one hiccup into "every Docker
+    // test skipped for the rest of the process" — a silently green run that verified
+    // nothing. The dictionary is concurrent because xUnit runs test classes in parallel.
+    private static readonly ConcurrentDictionary<string, bool> _imageCache = new();
 
     /// <summary>
     /// Docker 이미지가 존재하는지 확인
     /// </summary>
     public static async Task<bool> ImageExistsAsync(string imageName)
     {
-        if (_imageCache.TryGetValue(imageName, out var cached))
-            return cached;
+        if (_imageCache.TryGetValue(imageName, out var cached) && cached)
+            return true;
 
         try
         {
@@ -31,12 +37,15 @@ public static class DockerTestHelper
                 });
 
             var exists = images.Any();
-            _imageCache[imageName] = exists;
+            if (exists)
+            {
+                _imageCache[imageName] = true;
+            }
+
             return exists;
         }
         catch
         {
-            _imageCache[imageName] = false;
             return false;
         }
     }

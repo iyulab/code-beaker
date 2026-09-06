@@ -103,11 +103,6 @@ public sealed class RedisSessionStore : ISessionStore, IAsyncDisposable
         if (session != null)
         {
             session.LastActivity = DateTime.UtcNow;
-            session.ExecutionCount++;
-            if (session.State == "Idle")
-            {
-                session.State = "Active";
-            }
             await SaveSessionAsync(session, cancellationToken);
         }
     }

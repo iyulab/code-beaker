@@ -47,11 +47,6 @@ public sealed class InMemorySessionStore : ISessionStore
         if (_sessions.TryGetValue(sessionId, out var session))
         {
             session.LastActivity = DateTime.UtcNow;
-            session.ExecutionCount++;
-            if (session.State == "Idle")
-            {
-                session.State = "Active";
-            }
         }
         return Task.CompletedTask;
     }
