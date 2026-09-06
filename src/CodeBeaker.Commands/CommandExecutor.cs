@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -270,11 +271,11 @@ public sealed class CommandExecutor : ICommandExecutor
         try
         {
             // Build find command for Docker container
-            var findCommand = BuildFindCommand(command);
+            var findArgs = BuildFindArgs(command);
 
             var execConfig = new ContainerExecCreateParameters
             {
-                Cmd = new[] { "sh", "-c", findCommand },
+                Cmd = findArgs,
                 AttachStdout = true,
                 AttachStderr = true,
                 WorkingDir = "/workspace"
@@ -302,38 +303,46 @@ public sealed class CommandExecutor : ICommandExecutor
     }
 
     /// <summary>
-    /// Build find command with filters
+    /// Build the find argv with filters.
+    /// Every element becomes a separate Docker exec argument, so a value interpolated
+    /// here (path, pattern) cannot be reinterpreted as shell syntax.
     /// </summary>
-    private string BuildFindCommand(ListFilesCommand command)
+    private static IList<string> BuildFindArgs(ListFilesCommand command)
     {
-        var parts = new List<string> { "find", command.Path };
+        var args = new List<string> { "find", command.Path };
 
         // Add max depth
         if (!command.Recursive)
         {
-            parts.Add("-maxdepth 1");
+            args.Add("-maxdepth");
+            args.Add("1");
         }
         else if (command.MaxDepth > 0)
         {
-            parts.Add($"-maxdepth {command.MaxDepth}");
+            args.Add("-maxdepth");
+            args.Add(command.MaxDepth.ToString(CultureInfo.InvariantCulture));
         }
 
         // Exclude hidden files
         if (!command.IncludeHidden)
         {
-            parts.Add(@"-not -path '*/\.*'");
+            args.Add("-not");
+            args.Add("-path");
+            args.Add("*/.*");
         }
 
         // Add pattern filter
         if (!string.IsNullOrEmpty(command.Pattern))
         {
-            parts.Add($"-name '{command.Pattern}'");
+            args.Add("-name");
+            args.Add(command.Pattern);
         }
 
         // Output format: type|size|mtime|path
-        parts.Add(@"-printf '%y|%s|%T@|%p\n'");
+        args.Add("-printf");
+        args.Add(@"%y|%s|%T@|%p\n");
 
-        return string.Join(" ", parts);
+        return args;
     }
 
     /// <summary>

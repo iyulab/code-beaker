@@ -18,6 +18,7 @@ public class CommandExecutorTests : IDisposable
     private readonly Mock<IContainerExecStreamIO> _streamIOMock;
     private readonly CommandExecutor _executor;
     private readonly string _testContainerId = "test-container-123";
+    private readonly List<ContainerExecCreateParameters> _execParams = new();
 
     public CommandExecutorTests()
     {
@@ -105,6 +106,100 @@ f|9012|1698508800|./subdir/file3.txt";
         result.Should().NotBeNull();
         result.Success.Should().BeFalse();
         result.Error.Should().Contain("Failed to list files");
+    }
+
+    [Fact]
+    public async Task ListFiles_ShouldInvokeFindDirectly_WithoutAShell()
+    {
+        // Arrange
+        var command = new ListFilesCommand { Path = ".", Recursive = true };
+        SetupDockerExec("d|4096|1698508800|.", "");
+
+        // Act
+        await _executor.ExecuteAsync(command, _testContainerId);
+
+        // Assert
+        var cmd = _execParams.Should().ContainSingle().Subject.Cmd;
+        cmd[0].Should().Be("find");
+        cmd.Should().NotContain("sh");
+        cmd.Should().NotContain("-c");
+    }
+
+    [Fact]
+    public async Task ListFiles_ShouldPassPathAsOneArgument_WhenPathContainsShellMetacharacters()
+    {
+        // Arrange
+        const string hostilePath = "/workspace; touch /tmp/pwned";
+        var command = new ListFilesCommand { Path = hostilePath, Recursive = true };
+        SetupDockerExec("d|4096|1698508800|.", "");
+
+        // Act
+        await _executor.ExecuteAsync(command, _testContainerId);
+
+        // Assert — the value survives intact as a single argv element and is spliced nowhere else
+        var cmd = _execParams.Should().ContainSingle().Subject.Cmd;
+        cmd.Should().Contain(hostilePath);
+        cmd.Count(a => a.Contains("touch /tmp/pwned")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task ListFiles_ShouldPassPatternAsOneArgument_WhenPatternContainsAQuote()
+    {
+        // Arrange
+        const string hostilePattern = "x'; touch /tmp/pwned; echo '";
+        var command = new ListFilesCommand { Path = ".", Recursive = true, Pattern = hostilePattern };
+        SetupDockerExec("d|4096|1698508800|.", "");
+
+        // Act
+        await _executor.ExecuteAsync(command, _testContainerId);
+
+        // Assert
+        var cmd = _execParams.Should().ContainSingle().Subject.Cmd;
+        var nameIndex = cmd.IndexOf("-name");
+        nameIndex.Should().BeGreaterThan(-1);
+        cmd[nameIndex + 1].Should().Be(hostilePattern);
+    }
+
+    [Fact]
+    public async Task ListFiles_ShouldBuildEveryFindFlagAsItsOwnArgument()
+    {
+        // Arrange
+        var command = new ListFilesCommand
+        {
+            Path = "/workspace",
+            Recursive = true,
+            MaxDepth = 3,
+            IncludeHidden = false,
+            Pattern = "*.cs"
+        };
+        SetupDockerExec("d|4096|1698508800|/workspace", "");
+
+        // Act
+        await _executor.ExecuteAsync(command, _testContainerId);
+
+        // Assert
+        var cmd = _execParams.Should().ContainSingle().Subject.Cmd;
+        cmd.Should().Equal(
+            "find", "/workspace",
+            "-maxdepth", "3",
+            "-not", "-path", "*/.*",
+            "-name", "*.cs",
+            "-printf", @"%y|%s|%T@|%p\n");
+    }
+
+    [Fact]
+    public async Task ListFiles_ShouldLimitDepthToOne_WhenNotRecursive()
+    {
+        // Arrange
+        var command = new ListFilesCommand { Path = ".", Recursive = false, IncludeHidden = true };
+        SetupDockerExec("d|4096|1698508800|.", "");
+
+        // Act
+        await _executor.ExecuteAsync(command, _testContainerId);
+
+        // Assert
+        var cmd = _execParams.Should().ContainSingle().Subject.Cmd;
+        cmd.Should().Equal("find", ".", "-maxdepth", "1", "-printf", @"%y|%s|%T@|%p\n");
     }
 
     #endregion
@@ -295,7 +390,7 @@ f|9012|1698508800|./subdir/file3.txt";
 
         // Verify write was NOT called
         _dockerMock.Verify(
-            x => x.Exec.ExecCreateContainerAsync(
+            x => x.Exec.CreateContainerExecAsync(
                 It.IsAny<string>(),
                 It.Is<ContainerExecCreateParameters>(p => p.Cmd.Contains("tee")),
                 It.IsAny<CancellationToken>()),
@@ -373,10 +468,11 @@ f|9012|1698508800|./subdir/file3.txt";
     {
         var execResponseMock = new ContainerExecCreateResponse { ID = "exec-123" };
 
-        _dockerMock.Setup(x => x.Exec.ExecCreateContainerAsync(
+        _dockerMock.Setup(x => x.Exec.CreateContainerExecAsync(
                 It.IsAny<string>(),
                 It.IsAny<ContainerExecCreateParameters>(),
                 It.IsAny<CancellationToken>()))
+            .Callback<string, ContainerExecCreateParameters, CancellationToken>((_, p, _) => _execParams.Add(p))
             .ReturnsAsync(execResponseMock);
 
         // A real MultiplexedStream backed by an empty MemoryStream — CommandExecutor no longer
@@ -386,9 +482,9 @@ f|9012|1698508800|./subdir/file3.txt";
         // it and a null-backed stream would NullReferenceException on disposal.
         var stream = new MultiplexedStream(new MemoryStream(), false);
 
-        _dockerMock.Setup(x => x.Exec.StartAndAttachContainerExecAsync(
+        _dockerMock.Setup(x => x.Exec.StartContainerExecAsync(
                 It.IsAny<string>(),
-                It.IsAny<bool>(),
+                It.IsAny<ContainerExecStartParameters>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(stream);
 
@@ -400,7 +496,7 @@ f|9012|1698508800|./subdir/file3.txt";
     {
         var execResponseMock = new ContainerExecCreateResponse { ID = $"exec-read-{path}" };
 
-        _dockerMock.Setup(x => x.Exec.ExecCreateContainerAsync(
+        _dockerMock.Setup(x => x.Exec.CreateContainerExecAsync(
                 _testContainerId,
                 It.Is<ContainerExecCreateParameters>(p =>
                     p.Cmd.Contains("cat") && p.Cmd.Contains(path)),
@@ -410,9 +506,9 @@ f|9012|1698508800|./subdir/file3.txt";
         // See SetupDockerExec for why this is a real MultiplexedStream, not a Moq mock.
         var stream = new MultiplexedStream(new MemoryStream(), false);
 
-        _dockerMock.Setup(x => x.Exec.StartAndAttachContainerExecAsync(
+        _dockerMock.Setup(x => x.Exec.StartContainerExecAsync(
                 execResponseMock.ID,
-                false,
+                It.IsAny<ContainerExecStartParameters>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(stream);
 
@@ -424,7 +520,7 @@ f|9012|1698508800|./subdir/file3.txt";
     {
         var execResponseMock = new ContainerExecCreateResponse { ID = $"exec-write-{path}" };
 
-        _dockerMock.Setup(x => x.Exec.ExecCreateContainerAsync(
+        _dockerMock.Setup(x => x.Exec.CreateContainerExecAsync(
                 _testContainerId,
                 It.Is<ContainerExecCreateParameters>(p =>
                     p.Cmd.Contains("tee") && p.Cmd.Contains(path)),
@@ -433,9 +529,9 @@ f|9012|1698508800|./subdir/file3.txt";
 
         var stream = new MultiplexedStream(new MemoryStream(), false);
 
-        _dockerMock.Setup(x => x.Exec.StartAndAttachContainerExecAsync(
+        _dockerMock.Setup(x => x.Exec.StartContainerExecAsync(
                 execResponseMock.ID,
-                false,
+                It.IsAny<ContainerExecStartParameters>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(stream);
 
@@ -445,7 +541,7 @@ f|9012|1698508800|./subdir/file3.txt";
 
     private void SetupDockerExecFailure()
     {
-        _dockerMock.Setup(x => x.Exec.ExecCreateContainerAsync(
+        _dockerMock.Setup(x => x.Exec.CreateContainerExecAsync(
                 It.IsAny<string>(),
                 It.IsAny<ContainerExecCreateParameters>(),
                 It.IsAny<CancellationToken>()))
