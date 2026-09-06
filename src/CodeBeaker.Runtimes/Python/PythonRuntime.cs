@@ -3,6 +3,7 @@ using System.Text;
 using CodeBeaker.Commands.Models;
 using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Core.Models;
+using CodeBeaker.Core.Monitoring;
 
 namespace CodeBeaker.Runtimes.Python;
 
@@ -219,6 +220,8 @@ public sealed class PythonRuntime : IExecutionRuntime
 /// </summary>
 public sealed class PythonEnvironment : IExecutionEnvironment, IResourceMonitor
 {
+    private readonly ResourceUsageHistory _usageHistory = new();
+
     private readonly RuntimeConfig _config;
     private readonly string _pythonPath;
     private EnvironmentState _state;
@@ -653,14 +656,17 @@ public sealed class PythonEnvironment : IExecutionEnvironment, IResourceMonitor
             {
                 _currentProcess.Refresh();
 
-                return Task.FromResult(new ResourceUsage
+                var usage = new ResourceUsage
                 {
                     Timestamp = DateTime.UtcNow,
                     MemoryUsageBytes = _currentProcess.WorkingSet64,
                     MemoryPeakBytes = _currentProcess.PeakWorkingSet64,
                     CpuUsageNanoseconds = _currentProcess.TotalProcessorTime.Ticks * 100,
                     ProcessCount = 1
-                });
+                };
+
+                _usageHistory.Record(usage);
+                return Task.FromResult(usage);
             }
 
             return Task.FromResult(new ResourceUsage());
@@ -683,8 +689,7 @@ public sealed class PythonEnvironment : IExecutionEnvironment, IResourceMonitor
         int count = 10,
         CancellationToken cancellationToken = default)
     {
-        // 이력 저장 미지원
-        return Task.FromResult(new List<ResourceUsage>());
+        return Task.FromResult(_usageHistory.Recent(count));
     }
 
     public async Task<ResourceUsage?> GetResourceUsageAsync(CancellationToken cancellationToken = default)

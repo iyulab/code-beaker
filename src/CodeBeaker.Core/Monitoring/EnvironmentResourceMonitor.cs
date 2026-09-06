@@ -8,13 +8,14 @@ namespace CodeBeaker.Core.Monitoring;
 public sealed class EnvironmentResourceMonitor : IResourceMonitor
 {
     private readonly IExecutionEnvironment _environment;
-    private readonly List<ResourceUsage> _usageHistory = new();
-    private readonly int _maxHistorySize;
+    private readonly ResourceUsageHistory _usageHistory;
 
-    public EnvironmentResourceMonitor(IExecutionEnvironment environment, int maxHistorySize = 100)
+    public EnvironmentResourceMonitor(
+        IExecutionEnvironment environment,
+        int maxHistorySize = ResourceUsageHistory.DefaultCapacity)
     {
         _environment = environment;
-        _maxHistorySize = maxHistorySize;
+        _usageHistory = new ResourceUsageHistory(maxHistorySize);
     }
 
     public async Task<ResourceUsage> GetCurrentUsageAsync(CancellationToken cancellationToken = default)
@@ -30,17 +31,7 @@ public sealed class EnvironmentResourceMonitor : IResourceMonitor
             };
         }
 
-        // 히스토리 저장
-        lock (_usageHistory)
-        {
-            _usageHistory.Add(usage);
-
-            // 최대 크기 초과 시 오래된 항목 제거
-            if (_usageHistory.Count > _maxHistorySize)
-            {
-                _usageHistory.RemoveAt(0);
-            }
-        }
+        _usageHistory.Record(usage);
 
         return usage;
     }
@@ -149,13 +140,6 @@ public sealed class EnvironmentResourceMonitor : IResourceMonitor
         int count = 10,
         CancellationToken cancellationToken = default)
     {
-        lock (_usageHistory)
-        {
-            var history = _usageHistory
-                .TakeLast(count)
-                .ToList();
-
-            return Task.FromResult(history);
-        }
+        return Task.FromResult(_usageHistory.Recent(count));
     }
 }

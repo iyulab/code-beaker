@@ -3,6 +3,7 @@ using CodeBeaker.Commands.Models;
 using CodeBeaker.Core.Interfaces;
 using Docker.DotNet;
 using Docker.DotNet.Models;
+using CodeBeaker.Core.Monitoring;
 
 namespace CodeBeaker.Runtimes.Docker;
 
@@ -118,6 +119,8 @@ public sealed class DockerRuntime : IExecutionRuntime
 /// </summary>
 internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonitor
 {
+    private readonly ResourceUsageHistory _usageHistory = new();
+
     private readonly DockerClient _docker;
     private readonly CommandExecutor _commandExecutor;
     private readonly RuntimeConfig _config;
@@ -340,7 +343,7 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
             // PIDs
             var pidsCount = (int)(stats.PidsStats?.Current ?? 0);
 
-            return new ResourceUsage
+            var usage = new ResourceUsage
             {
                 Timestamp = DateTime.UtcNow,
                 MemoryUsageBytes = (long)memoryUsage,
@@ -355,6 +358,9 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
                 NetworkTxBytes = networkTx,
                 ProcessCount = pidsCount
             };
+
+            _usageHistory.Record(usage);
+            return usage;
         }
         catch
         {
@@ -408,14 +414,13 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
 
     /// <summary>
     /// 리소스 사용 이력 조회 (Phase 8.1)
-    /// 현재 구현에서는 이력을 저장하지 않으므로 빈 리스트 반환
+    /// GetCurrentUsageAsync 가 성공적으로 측정한 스냅샷이 고정 용량으로 누적된다.
     /// </summary>
     public Task<List<ResourceUsage>> GetUsageHistoryAsync(
         int count = 10,
         CancellationToken cancellationToken = default)
     {
-        // TODO: 향후 이력 저장 기능 추가 시 구현
-        return Task.FromResult(new List<ResourceUsage>());
+        return Task.FromResult(_usageHistory.Recent(count));
     }
 
     /// <summary>
