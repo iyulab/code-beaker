@@ -11,6 +11,9 @@
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <!-- FluentAssertions stays on the 6.x line deliberately: 8.0.0 moved to a paid
+         commercial license, so upgrading is a licensing decision rather than
+         routine maintenance. Tooling that reports "outdated" cannot see that. -->
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.30" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
