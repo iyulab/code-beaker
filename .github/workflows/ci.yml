@@ -57,19 +57,16 @@ jobs:
           --collect:"XPlat Code Coverage" \
           --results-directory ./TestResults
 
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results
-        path: TestResults/**/*.trx
-
-    - name: Upload coverage reports
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: coverage-reports
-        path: TestResults/**/coverage.cobertura.xml
+    # Unit test projects are listed explicitly here; a new one is not picked up
+    # until it is added to this job as well as to the solution.
+    - name: Run command tests
+      run: |
+        dotnet test tests/CodeBeaker.Commands.Tests/ \
+          --no-build \
+          --configuration Release \
+          --logger "trx;LogFileName=commands-test-results.trx" \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./TestResults
 
     - name: Publish code coverage
       uses: codecov/codecov-action@v4
@@ -184,6 +181,7 @@ jobs:
       if: always()
       with:
         name: benchmark-results
+        retention-days: 7
         path: BenchmarkDotNet.Artifacts/**/*
 
   # Job 5: 릴리스 준비 (태그 푸시 시)
