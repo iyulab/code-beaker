@@ -54,7 +54,7 @@ CodeBeaker는 다중 런타임을 지원하는 코드 실행 플랫폼입니다.
 **Windows:**
 ```powershell
 # Clone repository
-git clone https://github.com/iyulab/codebeaker.git
+git clone https://github.com/iyulab/code-beaker.git
 cd codebeaker
 
 # Build and run
@@ -65,7 +65,7 @@ dotnet run --project src/CodeBeaker.API
 **Linux/Mac:**
 ```bash
 # Clone repository
-git clone https://github.com/iyulab/codebeaker.git
+git clone https://github.com/iyulab/code-beaker.git
 cd codebeaker
 
 # Build and run

@@ -451,75 +451,68 @@ Session:
 
 **책임**: 언어별 실행 환경 제공
 
-#### BaseRuntime (Abstract Class)
+실행 경로는 두 인터페이스로 나뉜다 — **언어 메타데이터**(`IRuntime`)와 **실행 환경의 수명주기**(`IExecutionRuntime` / `IExecutionEnvironment`). 세션 기반 실행이 유일한 실행 모델이며, `SessionManager`가 후자를 구동한다.
+
+#### IRuntime — 언어 메타데이터
 ```csharp
-public abstract class BaseRuntime : IRuntime
+public interface IRuntime
 {
-    protected readonly DockerExecutor _executor;
-
-    public abstract string LanguageName { get; }
-    public abstract string DockerImage { get; }
-    protected abstract string FileExtension { get; }
-
-    // Legacy (Backward compatibility)
-    public abstract string[] GetRunCommand(
-        string entryPoint, List<string>? packages = null);
-
-    // Phase 2 (Command-based)
-    public abstract List<Command> GetExecutionPlan(
-        string code, List<string>? packages = null);
-
-    public async Task<ExecutionResult> ExecuteAsync(
-        string code, ExecutionConfig config, CancellationToken ct)
-    {
-        // 1. Setup workspace (temp directory)
-        // 2. Get execution plan (commands)
-        // 3. Execute via Docker
-        // 4. Cleanup workspace
-    }
+    string LanguageName { get; }   // "python", "javascript", "go", "csharp"
+    string DockerImage { get; }    // "codebeaker-python:latest"
 }
 ```
 
-#### 언어별 구현 예시 (PythonRuntime)
+`BaseRuntime`은 이 인터페이스의 추상 기반 클래스이고, 언어별 구현은 두 속성만 채운다. 실행 방법을 여기서 기술하지 않는다 — 명령 조립은 `CodeBeaker.Commands`가, 실행은 아래 실행 환경이 맡는다.
+
 ```csharp
 public sealed class PythonRuntime : BaseRuntime
 {
     public override string LanguageName => "python";
     public override string DockerImage => "codebeaker-python:latest";
-    protected override string FileExtension => ".py";
-
-    public override List<Command> GetExecutionPlan(
-        string code, List<string>? packages = null)
-    {
-        var commands = new List<Command>
-        {
-            // 1. Write Python code
-            new WriteFileCommand {
-                Path = "/workspace/main.py",
-                Content = code
-            }
-        };
-
-        // 2. Install packages if needed
-        if (packages != null && packages.Count > 0)
-        {
-            commands.Add(new ExecuteShellCommand {
-                CommandName = "pip",
-                Args = new List<string> { "install", "--no-cache-dir" }
-                    .Concat(packages).ToList()
-            });
-        }
-
-        // 3. Run Python script
-        commands.Add(new ExecuteShellCommand {
-            CommandName = "python3",
-            Args = new List<string> { "/workspace/main.py" }
-        });
-
-        return commands;
-    }
 }
 ```
+
+`language.list` / `initialize` JSON-RPC 메서드는 이 메타데이터만 읽는다.
+
+#### IExecutionRuntime — 실행 환경 생성
+```csharp
+public interface IExecutionRuntime
+{
+    string Name { get; }                       // "docker", "deno", "bun"
+    RuntimeType Type { get; }
+    string[] SupportedEnvironments { get; }
+
+    Task<bool> IsAvailableAsync(CancellationToken ct = default);
+    Task<IExecutionEnvironment> CreateEnvironmentAsync(RuntimeConfig config, CancellationToken ct = default);
+    RuntimeCapabilities GetCapabilities();
+}
+```
+
+`RuntimeCapabilities`(기동 시간·메모리 오버헤드·격리 수준·네트워크 지원 여부 등)를 `RuntimePreference`(Speed / Security / Memory / Balanced)와 맞춰 런타임을 고르는 것이 `RuntimeSelector`다.
+
+**선택적 능력 인터페이스**: 모든 런타임이 제공할 수 없는 기능은 별도 인터페이스로 표현하고, 지원하는 런타임만 구현한다.
+
+- `IResourceMonitor` — 자원 사용량 조회·위반 판정
+- `IReconnectableRuntime` — 이미 살아 있는 환경에 다시 붙기. 컨테이너처럼 호스트 프로세스보다 오래 사는 환경만 구현한다(프로세스 기반 런타임은 원리적으로 불가능).
+
+#### IExecutionEnvironment — 하나의 살아 있는 환경
+```csharp
+public interface IExecutionEnvironment : IAsyncDisposable
+{
+    string EnvironmentId { get; }              // 컨테이너 id 등, 환경 자신의 식별자
+    RuntimeType RuntimeType { get; }
+    EnvironmentState State { get; }
+
+    Task<CommandResult> ExecuteAsync(Command command, CancellationToken ct = default);
+    Task<EnvironmentState> GetStateAsync(CancellationToken ct = default);
+    Task CleanupAsync(CancellationToken ct = default);
+    Task<ResourceUsage?> GetResourceUsageAsync(CancellationToken ct = default);
+}
+```
+
+`EnvironmentId`는 **환경 자신의 식별자**다 — Docker 런타임에서는 컨테이너 id 그대로이며, 세션 저장소에도 그 값이 실린다. 다른 호스트 인스턴스가 세션을 이어받을 때 이 값만으로 컨테이너에 재연결하므로, 합성 식별자를 쓰면 재연결·정리·조회가 모두 불가능해진다.
+
+Docker 환경은 컨테이너를 `sleep infinity`로 띄워 두고 명령마다 `exec`한다 — 그래서 세션 안에서 파일시스템 상태가 유지된다. 컨테이너의 `HostConfig`는 `RuntimeConfig`의 `ResourceLimits`(메모리·CPU 상한)와 `PermissionSettings`(`AllowNet` → 네트워크 모드)에서 만들어진다.
 
 ---
 
