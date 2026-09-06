@@ -26,4 +26,8 @@
     <ProjectReference Include="..\CodeBeaker.Commands\CodeBeaker.Commands.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="CodeBeaker.Core.Tests" />
+  </ItemGroup>
+
 </Project>

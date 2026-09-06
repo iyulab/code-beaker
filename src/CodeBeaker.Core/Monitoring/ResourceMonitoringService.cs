@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Core.Models;
 using Microsoft.Extensions.Hosting;
@@ -15,6 +16,11 @@ public sealed class ResourceMonitoringService : BackgroundService
     private readonly ILogger<ResourceMonitoringService> _logger;
     private readonly TimeSpan _checkInterval;
     private readonly bool _enableAutoTermination;
+
+    /// <summary>
+    /// 세션별 리소스 모니터. 세션 수명 동안 유지해야 사용 이력이 쌓인다.
+    /// </summary>
+    private readonly ConcurrentDictionary<string, EnvironmentResourceMonitor> _monitors = new();
 
     public ResourceMonitoringService(
         ISessionManager sessionManager,
@@ -56,6 +62,16 @@ public sealed class ResourceMonitoringService : BackgroundService
     {
         var sessions = await _sessionManager.ListSessionsAsync(cancellationToken);
 
+        // 사라진 세션의 모니터는 이력과 함께 버린다.
+        var liveSessionIds = sessions.Select(s => s.SessionId).ToHashSet(StringComparer.Ordinal);
+        foreach (var trackedId in _monitors.Keys)
+        {
+            if (!liveSessionIds.Contains(trackedId))
+            {
+                _monitors.TryRemove(trackedId, out _);
+            }
+        }
+
         foreach (var session in sessions)
         {
             try
@@ -72,7 +88,7 @@ public sealed class ResourceMonitoringService : BackgroundService
         }
     }
 
-    private async Task CheckSessionResourcesAsync(Session session, CancellationToken cancellationToken)
+    internal async Task CheckSessionResourcesAsync(Session session, CancellationToken cancellationToken)
     {
         // Environment가 null이면 스킵 (환경이 아직 생성되지 않았거나 정리됨)
         if (session.Environment == null)
@@ -84,47 +100,69 @@ public sealed class ResourceMonitoringService : BackgroundService
         var state = await session.Environment.GetStateAsync(cancellationToken);
         if (state == EnvironmentState.Stopped || state == EnvironmentState.Error)
         {
+            _monitors.TryRemove(session.SessionId, out _);
             return;
         }
 
-        // 리소스 사용량 조회 (단순 로깅 목적)
-        var usage = await session.Environment.GetResourceUsageAsync(cancellationToken);
-
-        if (usage == null)
-        {
-            _logger.LogDebug(
-                "Unable to retrieve resource usage for session {SessionId}",
-                session.SessionId);
-            return;
-        }
-
-        // Phase 6.2: 기본 리소스 사용량 로깅
-        // TODO: SessionConfig에 ResourceLimits 추가 시 위반 감지 및 자동 종료 구현
-        _logger.LogDebug(
-            "Resource usage for session {SessionId}: Memory={MemoryMB:N0}MB, CPU={CpuPercent:F1}%, Processes={ProcessCount}",
+        // 세션 수명 동안 같은 모니터를 재사용해야 사용 이력이 누적된다.
+        var monitor = _monitors.GetOrAdd(
             session.SessionId,
-            usage.MemoryUsageBytes / (1024 * 1024),
-            usage.CpuUsagePercent,
-            usage.ProcessCount);
+            _ => new EnvironmentResourceMonitor(session.Environment));
 
-        // 기본 메모리 제한 체크 (SessionConfig.MemoryLimitMB 사용)
-        if (session.Config.MemoryLimitMB.HasValue)
+        var limits = BuildLimits(session.Config);
+        var violation = await monitor.CheckViolationsAsync(limits, cancellationToken);
+
+        if (violation == null)
         {
-            var memoryLimitBytes = session.Config.MemoryLimitMB.Value * 1024 * 1024;
-            if (usage.MemoryUsageBytes > memoryLimitBytes)
-            {
-                _logger.LogWarning(
-                    "Session {SessionId} exceeded memory limit: {UsageMB:N0}MB > {LimitMB:N0}MB",
-                    session.SessionId,
-                    usage.MemoryUsageBytes / (1024 * 1024),
-                    session.Config.MemoryLimitMB.Value);
-
-                // Phase 6.2: 자동 종료는 보류 (추가 검증 및 통합 후 활성화)
-                // if (_enableAutoTermination)
-                // {
-                //     await session.Environment.CleanupAsync(cancellationToken);
-                // }
-            }
+            var usage = await monitor.GetCurrentUsageAsync(cancellationToken);
+            _logger.LogDebug(
+                "Resource usage for session {SessionId}: Memory={MemoryMB:N0}MB, CPU={CpuPercent:F1}%, Processes={ProcessCount}",
+                session.SessionId,
+                usage.MemoryUsageBytes / (1024 * 1024),
+                usage.CpuUsagePercent,
+                usage.ProcessCount);
+            return;
         }
+
+        if (!violation.ShouldTerminate)
+        {
+            _logger.LogWarning(
+                "Session {SessionId} resource warning ({ViolationType}): {Message}",
+                session.SessionId,
+                violation.Type,
+                violation.Message);
+            return;
+        }
+
+        if (!_enableAutoTermination)
+        {
+            _logger.LogWarning(
+                "Session {SessionId} exceeded a hard resource limit ({ViolationType}) but auto-termination is disabled: {Message}",
+                session.SessionId,
+                violation.Type,
+                violation.Message);
+            return;
+        }
+
+        _logger.LogError(
+            "Terminating session {SessionId}: {Message}",
+            session.SessionId,
+            violation.Message);
+
+        await _sessionManager.CloseSessionAsync(session.SessionId, cancellationToken);
+        _monitors.TryRemove(session.SessionId, out _);
+    }
+
+    /// <summary>
+    /// SessionConfig에 표명된 제한을 위반 판정용 ResourceLimits로 옮긴다.
+    /// (SessionManager가 RuntimeConfig를 만들 때 쓰는 것과 같은 매핑)
+    /// </summary>
+    private static ResourceLimits BuildLimits(SessionConfig config)
+    {
+        return new ResourceLimits
+        {
+            MemoryLimitMB = config.MemoryLimitMB,
+            CpuShares = config.CpuShares
+        };
     }
 }
