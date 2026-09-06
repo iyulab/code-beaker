@@ -81,36 +81,7 @@ public sealed class SessionManager : ISessionManager, IDisposable
         }
 
         // 2. RuntimeConfig 생성
-        // Permissions is honored only by DenoRuntime today (see its
-        // CreateProcessStartInfo) — other runtimes (Native/Node/Python) can't
-        // enforce process-level permissions and ignore this struct entirely.
-        var security = config.Security;
-        var runtimeConfig = new RuntimeConfig
-        {
-            Environment = config.Language,
-            WorkspaceDirectory = Path.Combine(
-                Path.GetTempPath(),
-                $"codebeaker-{sessionId}"),
-            ResourceLimits = new ResourceLimits
-            {
-                MemoryLimitMB = config.MemoryLimitMB,
-                CpuShares = config.CpuShares,
-                TimeoutSeconds = 300
-            },
-            Permissions = new PermissionSettings
-            {
-                // Filesystem access always stays workspace-scoped regardless of
-                // SandboxRestrictFilesystem — DenoRuntime's flag builder only
-                // knows how to emit `--allow-read=<path>` per path, not a bare
-                // `--allow-read` for unrestricted access, so there is no way to
-                // honor SandboxRestrictFilesystem=false yet.
-                AllowRead = new List<string> { "/workspace", "/tmp" },
-                AllowWrite = new List<string> { "/workspace", "/tmp" },
-                AllowNet = !security.SandboxDisableNetwork,
-                AllowEnv = false,
-                AllowRun = !security.SandboxDisableShellCommands
-            }
-        };
+        var runtimeConfig = BuildRuntimeConfig(config, sessionId);
 
         // 3. 실행 환경 생성
         var environment = await runtime.CreateEnvironmentAsync(runtimeConfig, cancellationToken);
@@ -178,23 +149,33 @@ public sealed class SessionManager : ISessionManager, IDisposable
     /// <summary>
     /// Environment 재구성 (다른 API 인스턴스에서 생성된 세션용)
     /// </summary>
-    private async Task<IExecutionEnvironment?> ReconstructEnvironmentAsync(
+    internal async Task<IExecutionEnvironment?> ReconstructEnvironmentAsync(
         Session session,
         CancellationToken cancellationToken)
     {
+        // 되살릴 대상 식별자가 없으면 재연결할 것도 없다.
+        if (string.IsNullOrEmpty(session.ContainerId))
+        {
+            return null;
+        }
+
         try
         {
-            // Docker Runtime의 경우 기존 컨테이너 연결
-            if (session.RuntimeType == Interfaces.RuntimeType.Docker)
+            var runtime = await _runtimeSelector.SelectByTypeAsync(
+                session.RuntimeType,
+                session.Language,
+                cancellationToken);
+
+            // 프로세스 기반 런타임은 API 프로세스와 수명을 같이 해 재연결이 불가능하다.
+            if (runtime is not IReconnectableRuntime reconnectable)
             {
-                // ContainerId를 사용하여 Docker Environment 재구성
-                // 실제 구현은 DockerRuntime에 ReconnectEnvironmentAsync 메서드 필요
-                // 현재는 간단히 null 반환 (TODO: 구현 필요)
                 return null;
             }
 
-            // 다른 런타임은 현재 재구성 불가 (프로세스 기반이므로)
-            return null;
+            return await reconnectable.ReconnectEnvironmentAsync(
+                session.ContainerId,
+                BuildRuntimeConfig(session.Config, session.SessionId),
+                cancellationToken);
         }
         catch
         {
@@ -202,6 +183,49 @@ public sealed class SessionManager : ISessionManager, IDisposable
             return null;
         }
     }
+
+    /// <summary>
+    /// SessionConfig에서 RuntimeConfig를 만든다.
+    /// 세션 생성과 재연결이 같은 설정을 받아야 하므로 한 곳에서만 만든다 —
+    /// 재연결된 세션이 원래보다 느슨한 권한으로 살아나는 일이 없어야 한다.
+    /// </summary>
+    private static RuntimeConfig BuildRuntimeConfig(SessionConfig config, string sessionId)
+    {
+        // Permissions is honored only by DenoRuntime today (see its
+        // CreateProcessStartInfo) and, since the Docker runtime learned to read
+        // AllowNet, by the container network mode — other runtimes
+        // (Native/Node/Python) can't enforce process-level permissions and
+        // ignore this struct entirely.
+        var security = config.Security;
+
+        return new RuntimeConfig
+        {
+            Environment = config.Language,
+            WorkspaceDirectory = Path.Combine(
+                Path.GetTempPath(),
+                $"codebeaker-{sessionId}"),
+            ResourceLimits = new ResourceLimits
+            {
+                MemoryLimitMB = config.MemoryLimitMB,
+                CpuShares = config.CpuShares,
+                TimeoutSeconds = 300
+            },
+            Permissions = new PermissionSettings
+            {
+                // Filesystem access always stays workspace-scoped regardless of
+                // SandboxRestrictFilesystem — DenoRuntime's flag builder only
+                // knows how to emit `--allow-read=<path>` per path, not a bare
+                // `--allow-read` for unrestricted access, so there is no way to
+                // honor SandboxRestrictFilesystem=false yet.
+                AllowRead = new List<string> { "/workspace", "/tmp" },
+                AllowWrite = new List<string> { "/workspace", "/tmp" },
+                AllowNet = !security.SandboxDisableNetwork,
+                AllowEnv = false,
+                AllowRun = !security.SandboxDisableShellCommands
+            }
+        };
+    }
+
 
     /// <summary>
     /// 세션에서 명령 실행 (Multi-Runtime + 분산 스토리지)

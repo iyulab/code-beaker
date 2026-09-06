@@ -10,7 +10,7 @@ namespace CodeBeaker.Runtimes.Docker;
 /// <summary>
 /// Docker 컨테이너 기반 런타임
 /// </summary>
-public sealed class DockerRuntime : IExecutionRuntime
+public sealed class DockerRuntime : IExecutionRuntime, IReconnectableRuntime
 {
     private readonly DockerClient _docker;
     private readonly CommandExecutor _commandExecutor;
@@ -88,14 +88,14 @@ public sealed class DockerRuntime : IExecutionRuntime
     /// 기존 Docker 컨테이너에 재연결 (Phase 6.3)
     /// </summary>
     public async Task<IExecutionEnvironment?> ReconnectEnvironmentAsync(
-        string containerId,
+        string environmentId,
         RuntimeConfig config,
         CancellationToken cancellationToken = default)
     {
         try
         {
             // 컨테이너 존재 여부 확인
-            var container = await _docker.Containers.InspectContainerAsync(containerId, cancellationToken);
+            var container = await _docker.Containers.InspectContainerAsync(environmentId, cancellationToken);
 
             if (container == null || !container.State.Running)
             {
@@ -103,7 +103,7 @@ public sealed class DockerRuntime : IExecutionRuntime
             }
 
             // 기존 컨테이너에 재연결
-            var environment = new DockerEnvironment(_docker, _commandExecutor, config, containerId);
+            var environment = new DockerEnvironment(_docker, _commandExecutor, config, environmentId);
 
             return environment;
         }
