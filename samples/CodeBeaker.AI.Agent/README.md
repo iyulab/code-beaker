@@ -306,7 +306,7 @@ Error: Execution failed
 
 ## 📚 참고 자료
 
-- [CodeBeaker API 문서](../../docs-site/docs/api/overview.md)
+- [CodeBeaker 사용 가이드](../../docs/USAGE.md)
 - [JSON-RPC 2.0 스펙](https://www.jsonrpc.org/specification)
 - [OpenAI API 문서](https://platform.openai.com/docs)
 

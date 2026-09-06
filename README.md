@@ -409,19 +409,8 @@ Integration tests can be run manually on GitHub Actions:
 - [릴리스 노트](RELEASE_NOTES_v1.0.md) - v1.0 릴리스 정보
 - [문서 인덱스](DOCUMENTATION_INDEX.md) - 전체 문서 목록
 
-### 배포 및 운영
-- [보안 가이드](claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md) - 보안 기능
-- [배포 가이드](DEPLOYMENT_GUIDE_v1.0.md) - 프로덕션 배포
-- [테스트 결과](claudedocs/TEST_RESULTS_PHASE11.md) - 테스트 보고서
-
-### Phase 문서
-- Phase 1-11 완료 보고서: [claudedocs/](claudedocs/)
-- Package Management: [PHASE10](claudedocs/PHASE10_PACKAGE_MANAGEMENT_COMPLETE.md)
-- Security Hardening: [PHASE11](claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md)
-
 ### API 문서
-- [Docusaurus 문서 사이트](docs-site/)
-- [API 레퍼런스](docs-site/docs/api/overview.md)
+- [문서 사이트 소스](docs-site/) — `docs/`의 내용을 정적 사이트로 빌드해 GitHub Pages에 배포한다
 
 ## 사용 사례
 
@@ -483,8 +472,7 @@ dotnet run
 
 ### 문서
 - [AI Agent 샘플 README](samples/CodeBeaker.AI.Agent/README.md)
-- [Phase 12 전체 계획](claudedocs/PHASE12_AI_AGENT_INTEGRATION.md)
-- [Phase 12 완료 요약](claudedocs/PHASE12_SUMMARY.md)
+- [사용자 가이드](docs/USAGE.md)
 
 ## 개발
 
@@ -507,11 +495,12 @@ CodeBeaker/
 │   ├── CodeBeaker.JsonRpc/       # JSON-RPC router
 │   └── CodeBeaker.API/           # WebSocket API
 ├── tests/
-│   ├── CodeBeaker.Core.Tests/   # Unit tests
-│   └── CodeBeaker.Integration.Tests/ # Integration tests
+│   ├── CodeBeaker.Core.Tests/        # Unit tests
+│   ├── CodeBeaker.Commands.Tests/    # Unit tests
+│   ├── CodeBeaker.Runtimes.Tests/    # Unit tests
+│   └── CodeBeaker.Integration.Tests/ # Integration tests (Docker required)
 ├── docs/                          # Core documentation
-├── docs-site/                     # Docusaurus documentation
-├── claudedocs/                    # Development documentation
+├── docs-site/                     # Documentation site source
 └── RELEASE_NOTES_v1.0.md          # Release notes
 ```
 

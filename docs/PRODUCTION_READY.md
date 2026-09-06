@@ -2,11 +2,9 @@
 
 > ⚠️ **Note**: This document contains legacy production readiness information (Phase 1-3 only).
 >
-> **For v1.0 production deployment**, see:
-> - [DEPLOYMENT_GUIDE_v1.0.md](../DEPLOYMENT_GUIDE_v1.0.md) - Complete deployment guide ⭐
-> - [RELEASE_NOTES_v1.0.md](../RELEASE_NOTES_v1.0.md) - v1.0 release notes ⭐
-> - [docs-site/docs/production.md](../docs-site/docs/production.md) - Production guide with all 11 phases
-> - [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md) - Complete documentation index
+> **For current information**, see:
+> - [RELEASE_NOTES_v1.0.md](../RELEASE_NOTES_v1.0.md) - v1.0 release notes
+> - [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md) - Index of the documents in this repository
 
 ---
 

@@ -1,154 +1,32 @@
-# CodeBeaker v1.0 Documentation Index
+# CodeBeaker Documentation Index
 
-**Last Updated**: 2025
-**Version**: v1.0
-**Status**: Production Ready
+이 리포지토리에 **실제로 커밋돼 있는** 문서만 싣는다. 링크는 fresh clone에서 그대로 열린다.
 
----
+## 시작하기
 
-## 📚 Quick Navigation
+- [README.md](README.md) — 프로젝트 개요, 빠른 시작, 구조
+- [docs/USAGE.md](docs/USAGE.md) — WebSocket API 사용법과 예제
+- [DEV_GUIDE.md](DEV_GUIDE.md) — 개발 환경 설정과 기여 절차
 
-### Core Documentation (v1.0)
+## 설계와 운영
 
-| Document | Location | Description |
-|----------|----------|-------------|
-| **README** | [README.md](./README.md) | Main project overview and quick start |
-| **Release Notes** | [RELEASE_NOTES_v1.0.md](./RELEASE_NOTES_v1.0.md) | v1.0 release information and changelog |
-| **Deployment Guide** | [DEPLOYMENT_GUIDE_v1.0.md](./DEPLOYMENT_GUIDE_v1.0.md) | Production deployment guide |
-| **Test Results** | [claudedocs/TEST_RESULTS_PHASE11.md](./claudedocs/TEST_RESULTS_PHASE11.md) | Phase 11 security test results |
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 시스템 설계
+- [docs/PRODUCTION_READY.md](docs/PRODUCTION_READY.md) — 프로덕션 준비 상태 (Phase 1-3 기준의 과거 문서)
+- [k8s/README.md](k8s/README.md) — Kubernetes 배포 매니페스트
+- [RELEASE_NOTES_v1.0.md](RELEASE_NOTES_v1.0.md) — v1.0 릴리스 노트
 
-### Docusaurus Site (docs-site/)
+## 로드맵
 
-| Document | Location | Description |
-|----------|----------|-------------|
-| **Introduction** | [docs-site/docs/intro.md](./docs-site/docs/intro.md) | Complete v1.0 overview with all features |
-| **Architecture** | [docs-site/docs/architecture.md](./docs-site/docs/architecture.md) | System architecture with Phase 11 security |
-| **Production Guide** | [docs-site/docs/production.md](./docs-site/docs/production.md) | Production deployment and configuration |
-| **API Reference** | [docs-site/docs/api/](./docs-site/docs/api/) | API documentation |
+- [docs/TASKS.md](docs/TASKS.md) — 개발 로드맵 (과거 문서, 현재 상태는 릴리스 노트 참고)
 
-### Legacy Documentation (docs/)
+## 샘플
 
-**Note**: These documents are older versions. For v1.0 information, see docs-site/ or root-level guides.
+- [samples/CodeBeaker.AI.Agent/README.md](samples/CodeBeaker.AI.Agent/README.md) — AI 에이전트 연동 샘플
 
-| Document | Location | Status |
-|----------|----------|--------|
-| ARCHITECTURE.md | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | ⚠️ Outdated - See docs-site/docs/architecture.md |
-| PRODUCTION_READY.md | [docs/PRODUCTION_READY.md](./docs/PRODUCTION_READY.md) | ⚠️ Outdated - See DEPLOYMENT_GUIDE_v1.0.md |
-| TASKS.md | [docs/TASKS.md](./docs/TASKS.md) | ⚠️ Outdated - See RELEASE_NOTES_v1.0.md |
-| USAGE.md | [docs/USAGE.md](./docs/USAGE.md) | ✅ Still valid for API usage |
+## 문서 사이트
 
-### Phase Completion Reports (claudedocs/)
+`docs-site/`는 [Docusaurus](https://docusaurus.io/) 소스이며, `docs/`의 내용을 정적 사이트로 빌드해 GitHub Pages에 배포한다(`.github/workflows/docs-deploy.yml`). 사이트에서만 보이는 페이지를 이 인덱스에서 소스 경로로 링크하지 않는다 — 그 경로는 빌드 산출물이라 리포에 존재하지 않기 때문이다.
 
-Complete development history with detailed phase reports:
+## 보관 문서
 
-| Phase | Document | Description |
-|-------|----------|-------------|
-| **Phase 1** | [claudedocs/PHASE1_JSONRPC_WEBSOCKET_COMPLETE.md](./claudedocs/PHASE1_JSONRPC_WEBSOCKET_COMPLETE.md) | JSON-RPC + WebSocket |
-| **Phase 2** | [claudedocs/PHASE2_CUSTOM_COMMANDS_COMPLETE.md](./claudedocs/PHASE2_CUSTOM_COMMANDS_COMPLETE.md) | Custom Command Interface |
-| **Phase 3** | [claudedocs/PHASE3_SESSION_MANAGEMENT_COMPLETE.md](./claudedocs/PHASE3_SESSION_MANAGEMENT_COMPLETE.md) | Session Management |
-| **Phase 4** | [claudedocs/PHASE4_MULTI_RUNTIME_COMPLETE.md](./claudedocs/PHASE4_MULTI_RUNTIME_COMPLETE.md) | Multi-Runtime Architecture |
-| **Phase 5** | [claudedocs/PHASE5_PERFORMANCE_COMPLETE.md](./claudedocs/PHASE5_PERFORMANCE_COMPLETE.md) | Performance Optimization |
-| **Phase 6** | [claudedocs/PHASE6_HEALTHCHECKS_PROMETHEUS_COMPLETE.md](./claudedocs/PHASE6_HEALTHCHECKS_PROMETHEUS_COMPLETE.md) | Health Checks & Observability |
-| **Phase 7** | [claudedocs/PHASE7_DOCUSAURUS_COMPLETE.md](./claudedocs/PHASE7_DOCUSAURUS_COMPLETE.md) | Docusaurus Documentation |
-| **Phase 8** | [claudedocs/PHASE8_NODEJS_PYTHON_RUNTIMES_COMPLETE.md](./claudedocs/PHASE8_NODEJS_PYTHON_RUNTIMES_COMPLETE.md) | Node.js & Python Runtimes |
-| **Phase 9** | [claudedocs/PHASE9_MULTI_RUNTIME_SELECTION_COMPLETE.md](./claudedocs/PHASE9_MULTI_RUNTIME_SELECTION_COMPLETE.md) | Multi-Runtime Selection |
-| **Phase 10** | [claudedocs/PHASE10_PACKAGE_MANAGEMENT_COMPLETE.md](./claudedocs/PHASE10_PACKAGE_MANAGEMENT_COMPLETE.md) | Package Management |
-| **Phase 11** | [claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md](./claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md) | Security Hardening ⭐ |
-
-### Technical Reports
-
-| Report | Location | Description |
-|--------|----------|-------------|
-| **Performance Benchmark** | [claudedocs/PERFORMANCE_BENCHMARK_REPORT.md](./claudedocs/PERFORMANCE_BENCHMARK_REPORT.md) | Phase 5 benchmarking results |
-| **Test Results** | [claudedocs/TEST_RESULTS_PHASE11.md](./claudedocs/TEST_RESULTS_PHASE11.md) | Phase 11 security testing (147 tests) |
-
-### Archived Documentation (docs/archive/)
-
-Historical documentation and research:
-
-- Phase 1-4 completion reports (older versions)
-- Development history and research
-- Migration guides
-- Infrastructure benchmarks
-- Testing automation guides
-
-See [docs/archive/README.md](./docs/archive/README.md) for complete archive index.
-
----
-
-## 🎯 Quick Links by Task
-
-### Getting Started
-1. [README.md](./README.md) - Project overview
-2. [docs-site/docs/intro.md](./docs-site/docs/intro.md) - Detailed introduction
-3. [DEPLOYMENT_GUIDE_v1.0.md](./DEPLOYMENT_GUIDE_v1.0.md) - Deployment guide
-
-### Understanding Architecture
-1. [docs-site/docs/architecture.md](./docs-site/docs/architecture.md) - Complete architecture
-2. [claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md](./claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md) - Security architecture
-
-### Production Deployment
-1. [DEPLOYMENT_GUIDE_v1.0.md](./DEPLOYMENT_GUIDE_v1.0.md) - Deployment options
-2. [docs-site/docs/production.md](./docs-site/docs/production.md) - Production configuration
-3. [RELEASE_NOTES_v1.0.md](./RELEASE_NOTES_v1.0.md) - Release information
-
-### Security Configuration
-1. [claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md](./claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md) - Security implementation
-2. [claudedocs/TEST_RESULTS_PHASE11.md](./claudedocs/TEST_RESULTS_PHASE11.md) - Security test results
-3. [docs-site/docs/architecture.md](./docs-site/docs/architecture.md) - Security architecture section
-
-### API Usage
-1. [docs/USAGE.md](./docs/USAGE.md) - API usage examples
-2. [docs-site/docs/api/](./docs-site/docs/api/) - API reference
-3. [docs-site/docs/intro.md](./docs-site/docs/intro.md) - Quick start examples
-
-### Testing
-1. [claudedocs/TEST_RESULTS_PHASE11.md](./claudedocs/TEST_RESULTS_PHASE11.md) - Test results (147 tests)
-2. [tests/](./tests/) - Test source code
-
-### Performance
-1. [claudedocs/PERFORMANCE_BENCHMARK_REPORT.md](./claudedocs/PERFORMANCE_BENCHMARK_REPORT.md) - Benchmarks
-2. [claudedocs/PHASE5_PERFORMANCE_COMPLETE.md](./claudedocs/PHASE5_PERFORMANCE_COMPLETE.md) - Performance optimization
-
----
-
-## 📋 Documentation Standards
-
-### File Naming
-- **Root-level guides**: `UPPERCASE_WITH_UNDERSCORES.md` (e.g., `DEPLOYMENT_GUIDE_v1.0.md`)
-- **Docusaurus docs**: `lowercase-with-dashes.md` (e.g., `architecture.md`)
-- **Phase reports**: `PHASE##_NAME_COMPLETE.md` (e.g., `PHASE11_PRODUCTION_HARDENING_COMPLETE.md`)
-
-### Version Indicators
-- **v1.0**: Current production release
-- **⚠️ Outdated**: Legacy documentation (see newer versions)
-- **✅ Valid**: Still applicable documentation
-- **⭐**: Newest features
-
-### Where to Find What
-
-| Information Type | Authoritative Source |
-|------------------|---------------------|
-| Latest features | docs-site/docs/intro.md |
-| Security details | PHASE11_PRODUCTION_HARDENING_COMPLETE.md |
-| Deployment steps | DEPLOYMENT_GUIDE_v1.0.md |
-| API reference | docs/USAGE.md + docs-site/docs/api/ |
-| Architecture | docs-site/docs/architecture.md |
-| Test results | TEST_RESULTS_PHASE11.md |
-| Release info | RELEASE_NOTES_v1.0.md |
-
----
-
-## 🔄 Documentation Updates
-
-**v1.0 (2025)**:
-- Created comprehensive v1.0 documentation
-- Added Phase 11 security hardening docs
-- Updated all docs-site/ documentation
-- Created DEPLOYMENT_GUIDE_v1.0.md
-- Created RELEASE_NOTES_v1.0.md
-- Created this documentation index
-
----
-
-**For questions or updates**: See [README.md](./README.md) for contact information.
+`docs/archive/`에 과거 개발 단계의 기록이 남아 있다. 현재 동작을 설명하는 문서가 아니므로 위 목록에는 싣지 않는다.

@@ -2,10 +2,9 @@
 
 > ⚠️ **Note**: This document is outdated (shows v1.2.0 Phase 5).
 >
-> **For current roadmap**, see:
-> - [RELEASE_NOTES_v1.0.md](../RELEASE_NOTES_v1.0.md) - v1.0 release with all 11 phases ⭐
-> - [docs-site/docs/intro.md](../docs-site/docs/intro.md) - Current status and roadmap
-> - [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md) - Complete documentation index
+> **For current information**, see:
+> - [RELEASE_NOTES_v1.0.md](../RELEASE_NOTES_v1.0.md) - v1.0 release notes
+> - [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md) - Index of the documents in this repository
 
 ---
 

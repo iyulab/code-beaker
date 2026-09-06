@@ -3,8 +3,7 @@
 > ⚠️ **Note**: This document contains legacy architecture information (up to Phase 5).
 >
 > **For v1.0 architecture with Phase 11 security**, see:
-> - [docs-site/docs/architecture.md](../docs-site/docs/architecture.md) - Complete v1.0 architecture
-> - [PHASE11_PRODUCTION_HARDENING_COMPLETE.md](../claudedocs/PHASE11_PRODUCTION_HARDENING_COMPLETE.md) - Security architecture
+> - [RELEASE_NOTES_v1.0.md](../RELEASE_NOTES_v1.0.md) - v1.0 release notes
 > - [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md) - Complete documentation index
 
 ---
@@ -21,7 +20,7 @@ CodeBeaker는 **Multi-Runtime 지원 세션 기반 코드 실행 플랫폼**으�
 4. **Runtime Abstraction**: IExecutionRuntime 인터페이스 기반 확장 가능 설계
 5. **JSON-RPC 2.0**: 표준 프로토콜 준수
 
-**v1.0 Update**: Added 5-layer security architecture (Phase 11). See [docs-site/docs/architecture.md](../docs-site/docs/architecture.md) for complete information.
+**v1.0 Update**: Added 5-layer security architecture (Phase 11).
 
 ---
 
@@ -697,10 +696,8 @@ GET http://localhost:5000/health
 
 ## 참조 문서
 
-- [Phase 1: JSON-RPC + WebSocket](PHASE1_COMPLETE.md)
-- [Phase 2: Custom Commands](PHASE2_COMPLETE.md)
-- [Phase 3: Session Management](PHASE3_COMPLETE.md)
-- [통합 테스트](INTEGRATION_TESTS_COMPLETE.md)
+- [사용자 가이드](USAGE.md)
+- [릴리스 노트](../RELEASE_NOTES_v1.0.md)
 - [프로덕션 준비](PRODUCTION_READY.md)
 
 ---

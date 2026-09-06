@@ -613,10 +613,8 @@ dotnet test /p:CollectCoverage=true \
 ## 추가 리소스
 
 ### 문서
-- [아키텍처 설계](docs/CSHARP_ARCHITECTURE.md)
-- [마이그레이션 가이드](docs/MIGRATION.md)
-- [사용자 가이드](USAGE.md)
-- [완료 요약](docs/COMPLETION_SUMMARY.md)
+- [아키텍처 설계](docs/ARCHITECTURE.md)
+- [사용자 가이드](docs/USAGE.md)
 
 ### API 문서
 - Swagger UI: http://localhost:5039
