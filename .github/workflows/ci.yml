@@ -1,4 +1,4 @@
-name: CI Pipeline (Unit Tests Only)
+name: CI Pipeline
 
 on:
   push:
@@ -76,6 +76,90 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
+
+  # Job 1b: 통합 테스트 — 런타임 이미지를 만들고 실제로 돌린다.
+  #
+  # 이 잡이 없으면 CodeBeaker.Integration.Tests 는 CI 에서 한 번도 실행되지 않는다.
+  # 그 테스트들은 런타임 이미지가 없으면 스스로 skip 하므로, 이미지를 만들지 않은 채
+  # 돌리면 "전부 통과"로 보이면서 실제로는 아무것도 검증하지 않는다 — 그래서 이미지
+  # 존재를 테스트 실행 전에 강제로 확인한다.
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    needs: build-and-test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build python runtime image
+      uses: docker/build-push-action@v6
+      with:
+        context: docker/runtimes/python
+        tags: codebeaker-python:latest
+        load: true
+        cache-from: type=gha,scope=runtime-python
+        cache-to: type=gha,scope=runtime-python,mode=max
+
+    - name: Build nodejs runtime image
+      uses: docker/build-push-action@v6
+      with:
+        context: docker/runtimes/nodejs
+        tags: codebeaker-nodejs:latest
+        load: true
+        cache-from: type=gha,scope=runtime-nodejs
+        cache-to: type=gha,scope=runtime-nodejs,mode=max
+
+    - name: Build golang runtime image
+      uses: docker/build-push-action@v6
+      with:
+        context: docker/runtimes/golang
+        tags: codebeaker-golang:latest
+        load: true
+        cache-from: type=gha,scope=runtime-golang
+        cache-to: type=gha,scope=runtime-golang,mode=max
+
+    - name: Build dotnet runtime image
+      uses: docker/build-push-action@v6
+      with:
+        context: docker/runtimes/csharp
+        tags: codebeaker-dotnet:latest
+        load: true
+        cache-from: type=gha,scope=runtime-dotnet
+        cache-to: type=gha,scope=runtime-dotnet,mode=max
+
+    # A missing image makes the integration tests skip instead of fail, which
+    # would turn a broken build step into a green run. Fail here instead.
+    - name: Verify runtime images are present
+      run: |
+        for image in codebeaker-python codebeaker-nodejs codebeaker-golang codebeaker-dotnet; do
+          if ! docker image inspect "$image:latest" > /dev/null 2>&1; then
+            echo "::error::$image:latest was not built — integration tests would silently skip."
+            exit 1
+          fi
+        done
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build solution
+      run: dotnet build --no-restore --configuration Release
+
+    - name: Run integration tests
+      run: |
+        dotnet test tests/CodeBeaker.Integration.Tests/ \
+          --no-build \
+          --configuration Release \
+          --logger "trx;LogFileName=integration-test-results.trx" \
+          --results-directory ./TestResults
 
   # Job 2: 코드 품질 분석
   code-quality:
@@ -188,7 +272,7 @@ jobs:
   prepare-release:
     name: Prepare Release
     runs-on: ubuntu-latest
-    needs: [build-and-test, code-quality, security-scan]
+    needs: [build-and-test, integration-tests, code-quality, security-scan]
     if: startsWith(github.ref, 'refs/tags/v')
 
     steps:
@@ -226,7 +310,7 @@ jobs:
   publish-runtime-images:
     name: Publish Runtime Images
     runs-on: ubuntu-latest
-    needs: [build-and-test, code-quality, security-scan]
+    needs: [build-and-test, integration-tests, code-quality, security-scan]
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
       contents: read
