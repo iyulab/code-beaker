@@ -76,6 +76,8 @@ public sealed class DockerRuntime : IExecutionRuntime
             MemoryOverheadMB = 250,
             IsolationLevel = 9,
             SupportsFilesystemPersistence = true,
+            // 이 런타임이 네트워크 접근을 제공할 수 있다는 뜻이며, 실제 개방 여부는
+            // RuntimeConfig.Permissions.AllowNet 이 결정한다(BuildHostConfig 참고).
             SupportsNetworkAccess = true,
             MaxConcurrentExecutions = 50
         };
@@ -170,7 +172,7 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
                     ["codebeaker.created"] = DateTime.UtcNow.ToString("o"),
                     ["codebeaker.runtime"] = "docker"
                 },
-                HostConfig = BuildHostConfig(_config.ResourceLimits)
+                HostConfig = BuildHostConfig(_config.ResourceLimits, _config.Permissions)
             };
 
             var container = await _docker.Containers.CreateContainerAsync(createParams, cancellationToken);
@@ -434,13 +436,16 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
     }
 
     /// <summary>
-    /// ResourceLimits에서 Docker HostConfig 생성 (Phase 6.2)
+    /// ResourceLimits·PermissionSettings에서 Docker HostConfig 생성 (Phase 6.2)
     /// </summary>
-    private static HostConfig BuildHostConfig(ResourceLimits? limits)
+    internal static HostConfig BuildHostConfig(ResourceLimits? limits, PermissionSettings? permissions)
     {
         var hostConfig = new HostConfig
         {
-            NetworkMode = "none",
+            // 네트워크는 호출자가 PermissionSettings.AllowNet 으로 명시적으로 허용한 경우에만 열린다.
+            // Permissions 자체를 넘기지 않은 호출자는 격리를 의도한 것으로 보고 차단을 유지한다
+            // (SessionManager 는 SecurityConfig.SandboxDisableNetwork 를 뒤집어 이 값을 채운다).
+            NetworkMode = permissions?.AllowNet == true ? "bridge" : "none",
             AutoRemove = false
         };
 

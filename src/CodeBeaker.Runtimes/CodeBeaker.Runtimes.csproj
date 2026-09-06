@@ -19,4 +19,8 @@
     <RepositoryUrl>https://github.com/iyulab/code-beaker</RepositoryUrl>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="CodeBeaker.Runtimes.Tests" />
+  </ItemGroup>
+
 </Project>
