@@ -155,11 +155,24 @@ jobs:
 
     - name: Run integration tests
       run: |
+        set -o pipefail
         dotnet test tests/CodeBeaker.Integration.Tests/ \
           --no-build \
           --configuration Release \
           --logger "trx;LogFileName=integration-test-results.trx" \
-          --results-directory ./TestResults
+          --results-directory ./TestResults | tee integration-output.txt
+
+    # These tests skip themselves whenever the Docker environment looks
+    # unavailable, and a skip is reported as a pass. The images were verified
+    # above, so any skip here means the suite decided not to run for some other
+    # reason — which must not be reported as a successful verification.
+    - name: Fail if any integration test was skipped
+      run: |
+        if grep -Eq "Skipped: *[1-9]" integration-output.txt; then
+          echo "::error::Integration tests were skipped — a skipped test verifies nothing."
+          grep -E "Passed!|Failed!|Skipped" integration-output.txt || true
+          exit 1
+        fi
 
   # Job 2: 코드 품질 분석
   code-quality:
