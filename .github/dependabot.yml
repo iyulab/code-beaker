@@ -25,6 +25,13 @@ updates:
       # the last Apache-2.0 line is a licensing decision, not a maintenance one,
       # so it is made deliberately rather than by an automated bump.
       - dependency-name: "FluentAssertions"
+      # Same test-platform migration trap as elsewhere: the 4.x visualstudio runner
+      # belongs to the xunit v3 line (this repo is on v2), which requires
+      # Microsoft.Testing.Platform, and the coverlet collector is replaced rather
+      # than upgraded when leaving VSTest.
+      - dependency-name: "xunit.runner.visualstudio"
+      - dependency-name: "Microsoft.NET.Test.Sdk"
+      - dependency-name: "coverlet.collector"
 
   - package-ecosystem: "github-actions"
     directory: "/"
