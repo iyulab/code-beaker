@@ -1,9 +1,9 @@
 using CodeBeaker.Commands;
 using CodeBeaker.Commands.Models;
 using CodeBeaker.Core.Interfaces;
+using CodeBeaker.Core.Monitoring;
 using Docker.DotNet;
 using Docker.DotNet.Models;
-using CodeBeaker.Core.Monitoring;
 
 namespace CodeBeaker.Runtimes.Docker;
 
@@ -135,7 +135,6 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
         _docker = docker;
         _commandExecutor = commandExecutor;
         _config = config;
-        EnvironmentId = Guid.NewGuid().ToString("N");
 
         // Phase 6.3: 기존 컨테이너 ID가 제공되면 재연결 모드
         if (!string.IsNullOrEmpty(existingContainerId))
@@ -145,7 +144,14 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
         }
     }
 
-    public string EnvironmentId { get; }
+    /// <summary>
+    /// 이 환경의 식별자 — 컨테이너 자신의 id다.
+    ///
+    /// 별도로 생성한 합성 id를 쓰면 호출자가 받은 식별자로는 컨테이너를 조회할 수도,
+    /// 다른 호스트 인스턴스에서 재연결할 수도 없다(<see cref="ReconnectEnvironmentAsync"/>가
+    /// 이 값을 그대로 inspect 대상으로 쓴다). 컨테이너가 만들어지기 전에는 비어 있다.
+    /// </summary>
+    public string EnvironmentId => _containerId;
 
     public RuntimeType RuntimeType => RuntimeType.Docker;
 
@@ -170,7 +176,10 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
                 WorkingDir = "/workspace",
                 Labels = new Dictionary<string, string>
                 {
-                    ["codebeaker.environment"] = EnvironmentId,
+                    // `codebeaker.environment` 라벨은 두지 않는다 — 그 자리에 넣을 수 있는
+                    // 유일한 값이던 합성 id 가 사라졌고, 환경의 식별자는 이제 컨테이너
+                    // 자신의 id 이므로 같은 값을 라벨로 중복해 실을 이유가 없다.
+                    // 좀비 정리는 `codebeaker.runtime` + `codebeaker.created` 로 한다.
                     ["codebeaker.language"] = _config.Environment,
                     ["codebeaker.created"] = DateTime.UtcNow.ToString("o"),
                     ["codebeaker.runtime"] = "docker"

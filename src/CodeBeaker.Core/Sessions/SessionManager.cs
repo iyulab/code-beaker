@@ -258,13 +258,16 @@ public sealed class SessionManager : ISessionManager, IDisposable
         // 3. 명령 실행
         var result = await session.Environment.ExecuteAsync(command, cancellationToken);
 
-        // 4. Idle 상태로 전환 후 저장
+        // 4. 실행 횟수와 상태를 반영해 저장.
+        //    ExecutionCount 는 첫 실행에서만 일어나는 Active→Idle 전이와 달리 매 실행마다
+        //    바뀌므로, 저장을 상태 전이 조건 안에 두면 두 번째 실행부터는 기록되지 않는다.
+        session.ExecutionCount++;
         if (session.State == SessionState.Active)
         {
             session.State = SessionState.Idle;
-            var sessionData = SessionMapper.ToSessionData(session);
-            await _sessionStore.SaveSessionAsync(sessionData, cancellationToken);
         }
+        await _sessionStore.SaveSessionAsync(
+            SessionMapper.ToSessionData(session), cancellationToken);
 
         return result;
     }

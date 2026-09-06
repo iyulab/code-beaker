@@ -177,7 +177,10 @@ public sealed class MultiRuntimeSelectionTests : IDisposable
 
         // Assert
         Assert.True(result.Success, result.Error);
-        Assert.Equal(1, session.ExecutionCount);
+
+        var stored = await _sessionManager.GetSessionAsync(session.SessionId);
+        Assert.NotNull(stored);
+        Assert.Equal(1, stored!.ExecutionCount);
 
         // Cleanup
         await _sessionManager.CloseSessionAsync(session.SessionId);

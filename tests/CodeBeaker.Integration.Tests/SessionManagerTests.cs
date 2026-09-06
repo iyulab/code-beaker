@@ -153,11 +153,15 @@ public sealed class SessionManagerTests : IDisposable
         // Act
         var result = await _sessionManager.ExecuteInSessionAsync(session.SessionId, command);
 
-        // Assert
+        // Assert — 세션 상태의 정본은 저장소다. CreateSessionAsync 가 돌려준 인스턴스는
+        // 생성 시점의 스냅샷이라 이후 실행이 반영되지 않으므로 다시 읽어 확인한다.
         Assert.NotNull(result);
         Assert.True(result.Success);
-        Assert.Equal(1, session.ExecutionCount);
-        Assert.Equal(SessionState.Idle, session.State);
+
+        var stored = await _sessionManager.GetSessionAsync(session.SessionId);
+        Assert.NotNull(stored);
+        Assert.Equal(1, stored!.ExecutionCount);
+        Assert.Equal(SessionState.Idle, stored.State);
 
         // Cleanup
         await _sessionManager.CloseSessionAsync(session.SessionId);
@@ -191,7 +195,10 @@ public sealed class SessionManagerTests : IDisposable
         // Assert
         Assert.True(writeResult.Success);
         Assert.True(readResult.Success);
-        Assert.Equal(2, session.ExecutionCount);
+
+        var stored = await _sessionManager.GetSessionAsync(session.SessionId);
+        Assert.NotNull(stored);
+        Assert.Equal(2, stored!.ExecutionCount);
 
         // Cleanup
         await _sessionManager.CloseSessionAsync(session.SessionId);
