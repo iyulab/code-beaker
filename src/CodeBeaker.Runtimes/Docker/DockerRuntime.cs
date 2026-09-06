@@ -98,8 +98,18 @@ public sealed class DockerRuntime : IExecutionRuntime, IReconnectableRuntime
             // 컨테이너 존재 여부 확인
             var container = await _docker.Containers.InspectContainerAsync(environmentId, cancellationToken);
 
-            if (container == null || !container.State.Running)
+            if (container == null)
             {
+                return null;
+            }
+
+            if (!container.State.Running)
+            {
+                // 멈춘 컨테이너는 되살릴 대상이 아니다. 여기서 걷어내지 않으면 호출자가
+                // 이 답을 받고 세션 기록을 지우는 순간(그것이 계약이다) 이 컨테이너를
+                // 가리키는 것이 아무것도 남지 않는다 — 라벨 기반 청소가 24시간 뒤
+                // 프로세스 재시작 때 훑어 줄 때까지 자리만 차지한다.
+                await RemoveContainerQuietlyAsync(environmentId, cancellationToken);
                 return null;
             }
 
@@ -120,6 +130,25 @@ public sealed class DockerRuntime : IExecutionRuntime, IReconnectableRuntime
         // 그 밖의 예외(데몬 미기동, 연결 끊김 등)는 삼키지 않는다. "지금 확인할 수 없다"를
         // "없다"로 보고하면 호출자가 멀쩡한 환경을 사라진 것으로 판정하게 된다 —
         // 일시적 오류를 영구 상태로 굳히는 종류의 결함이다.
+    }
+
+    /// <summary>
+    /// 정리는 최선 노력이다 — 실패해도 재연결 결과(되살릴 수 없음)는 달라지지 않으므로
+    /// 호출자에게 전가하지 않는다. 남는 경우는 라벨 기반 청소가 뒤에서 받아 준다.
+    /// </summary>
+    private async Task RemoveContainerQuietlyAsync(string containerId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _docker.Containers.RemoveContainerAsync(
+                containerId,
+                new ContainerRemoveParameters { Force = true },
+                cancellationToken);
+        }
+        catch
+        {
+            // 이미 사라졌거나 지금은 지울 수 없다. 어느 쪽이든 되살릴 수 없다는 답은 같다.
+        }
     }
 }
 

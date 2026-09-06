@@ -4,6 +4,8 @@ using CodeBeaker.Core.Models;
 using CodeBeaker.Core.Sessions;
 using CodeBeaker.Core.Storage;
 using CodeBeaker.Integration.Tests.TestHelpers;
+using Docker.DotNet;
+using Docker.DotNet.Models;
 using Xunit;
 
 namespace CodeBeaker.Integration.Tests;
@@ -73,6 +75,42 @@ public sealed class SessionReconnectionLiveTests : IDisposable
         {
             await _creator.CloseSessionAsync(session.SessionId);
         }
+    }
+
+    /// <summary>
+    /// 재연결의 실패 경로. 컨테이너가 멈추면 그 세션은 두 번 다시 실행될 수 없는데,
+    /// 기록이 그대로 남으면 목록에는 살아 있는 것으로 계속 보고된다. 그리고 기록만
+    /// 지우고 멈춘 컨테이너를 남기면 이번엔 그것을 가리키는 것이 아무것도 없어진다 —
+    /// 둘 다 일어나야 실패 경로가 닫힌다. 모의 객체로는 어느 쪽도 확인할 수 없다.
+    /// </summary>
+    [SkippableFact]
+    public async Task AnotherInstance_ClosesTheRecordAndClearsTheRemains_WhenTheContainerIsGone()
+    {
+        await SkipIfDockerUnavailableAsync();
+
+        using var docker = new DockerClientBuilder().Build();
+
+        var session = await _creator.CreateSessionAsync(new SessionConfig
+        {
+            Language = "python",
+            RuntimeType = RuntimeType.Docker
+        });
+        var containerId = session.ContainerId;
+
+        await docker.Containers.StopContainerAsync(
+            containerId, new ContainerStopParameters { WaitBeforeKillSeconds = 5 });
+
+        var revived = await _other.GetSessionAsync(session.SessionId);
+
+        Assert.NotNull(revived);
+        Assert.Equal(SessionState.Closed, revived!.State);
+
+        // 기록이 정리됐다 — 실행할 수 없는 세션이 목록에 남지 않는다.
+        Assert.Null(await _sharedStore.GetSessionAsync(session.SessionId));
+
+        // 잔해도 정리됐다 — 기록이 사라진 뒤에도 컨테이너만 남는 일이 없어야 한다.
+        await Assert.ThrowsAsync<DockerContainerNotFoundException>(
+            () => docker.Containers.InspectContainerAsync(containerId));
     }
 
     public void Dispose()
