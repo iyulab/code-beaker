@@ -14,6 +14,16 @@ public sealed class NativeProcessRuntimeTests
 {
     private readonly NativeProcessRuntime _runtime = new();
 
+    /// <summary>
+    /// 이 파일의 두 재현 테스트는 셸을 통해 프로세스를 띄운다. 셸 이름과 인자 형식이
+    /// 플랫폼마다 다르므로 여기서 한 번만 갈라 두고, 테스트 본문은 무엇을 재현하려는지에
+    /// 집중한다. 이 갈래가 없으면 Windows 전용 명령이 리눅스 CI 에서 실패한다.
+    /// </summary>
+    private static ExecuteShellCommand Shell(string windowsScript, string posixScript)
+        => OperatingSystem.IsWindows()
+            ? new ExecuteShellCommand { CommandName = "cmd", Args = ["/c", windowsScript] }
+            : new ExecuteShellCommand { CommandName = "sh", Args = ["-c", posixScript] };
+
     [Fact]
     public void Runtime_ShouldHaveCorrectProperties()
     {
@@ -125,12 +135,15 @@ public sealed class NativeProcessRuntimeTests
                 ResourceLimits = new ResourceLimits { TimeoutSeconds = 15 },
             });
 
-            // ~880KB of stdout — comfortably past any OS pipe buffer size (a few KB to 64KB).
-            var result = await environment.ExecuteAsync(new ExecuteShellCommand
-            {
-                CommandName = "cmd",
-                Args = ["/c", "for", "/L", "%i", "in", "(1,1,20000)", "do", "@echo", new string('x', 40)],
-            });
+            // ~1MB of stdout — comfortably past any OS pipe buffer size (a few KB to 64KB).
+            // The byte count is what this test needs; the loop count is pure cost, so the
+            // line is long and the loop is short. The earlier shape (20,000 short lines)
+            // took long enough under parallel load to trip the runtime's own timeout and
+            // fail for a reason that had nothing to do with the deadlock being guarded.
+            var line = new string('x', 500);
+            var result = await environment.ExecuteAsync(Shell(
+                $"for /L %i in (1,1,2000) do @echo {line}",
+                $"i=0; while [ $i -lt 2000 ]; do echo {line}; i=$((i+1)); done"));
 
             Assert.True(result.Success, result.Error);
             Assert.NotNull(result.Result);
@@ -175,11 +188,9 @@ public sealed class NativeProcessRuntimeTests
             // grandchild ("ping -t", which never stops on its own) is what actually exposes
             // whether that detachment holds: if it doesn't, or if it inherits the outer
             // process's redirected stdout/stderr pipe either way, the read never sees EOF.
-            var result = await environment.ExecuteAsync(new ExecuteShellCommand
-            {
-                CommandName = "cmd",
-                Args = ["/c", "start", "/b", "ping", "-t", "127.0.0.1"],
-            });
+            var result = await environment.ExecuteAsync(Shell(
+                "start /b ping -t 127.0.0.1",
+                "sh -c 'while true; do echo tick; sleep 1; done' &"));
 
             Assert.False(result.Success);
             Assert.Contains("timeout", result.Error, StringComparison.OrdinalIgnoreCase);
