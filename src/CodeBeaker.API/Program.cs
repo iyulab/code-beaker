@@ -14,7 +14,7 @@ using CodeBeaker.Runtimes.Deno;
 using CodeBeaker.Runtimes.Docker;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.OpenApi.Models;
+using Microsoft.OpenApi;
 using Prometheus;
 using Serilog;
 using Serilog.Events;
@@ -168,7 +168,7 @@ try
             Contact = new OpenApiContact
             {
                 Name = "CodeBeaker",
-                Url = new Uri("https://github.com/yourusername/code-beaker")
+                Url = new Uri("https://github.com/iyulab/code-beaker")
             },
             License = new OpenApiLicense
             {
