@@ -1,0 +1,40 @@
+version: 2
+
+updates:
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      test-tooling:
+        patterns:
+          - "xunit*"
+          - "Microsoft.NET.Test.Sdk"
+          - "coverlet.*"
+          - "Moq"
+          - "Testcontainers*"
+      microsoft-extensions:
+        patterns:
+          - "Microsoft.Extensions.*"
+    ignore:
+      # FluentAssertions moved to a paid commercial license in 8.0.0; staying on
+      # the last Apache-2.0 line is a licensing decision, not a maintenance one,
+      # so it is made deliberately rather than by an automated bump.
+      - dependency-name: "FluentAssertions"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(ci)"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
