@@ -10,7 +10,11 @@ public interface IReconnectableRuntime
 {
     /// <summary>
     /// 기존 환경 식별자(컨테이너 id 등)로 실행 환경을 되살린다.
-    /// 대상이 이미 사라졌거나 재연결에 실패하면 null.
+    ///
+    /// null 은 <b>대상이 확실히 없다</b>는 뜻이다 — 호출자는 이 답을 근거로 세션을
+    /// 종료 처리해도 된다. 반면 지금 확인할 수 없는 사정(데몬 미기동, 연결 끊김 등)은
+    /// null 이 아니라 <b>예외</b>로 알린다. 둘을 같은 값으로 뭉치면 일시적 장애 한 번이
+    /// 살아 있는 환경을 사라진 것으로 굳혀 버린다.
     /// </summary>
     Task<IExecutionEnvironment?> ReconnectEnvironmentAsync(
         string environmentId,

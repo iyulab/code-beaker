@@ -1,3 +1,4 @@
+using System.Net;
 using CodeBeaker.Commands;
 using CodeBeaker.Commands.Models;
 using CodeBeaker.Core.Interfaces;
@@ -107,10 +108,18 @@ public sealed class DockerRuntime : IExecutionRuntime, IReconnectableRuntime
 
             return environment;
         }
-        catch
+        catch (DockerContainerNotFoundException)
+        {
+            // 컨테이너가 확실히 없다 — 이것이 계약상의 null 이다.
+            return null;
+        }
+        catch (DockerApiException e) when (e.StatusCode == HttpStatusCode.NotFound)
         {
             return null;
         }
+        // 그 밖의 예외(데몬 미기동, 연결 끊김 등)는 삼키지 않는다. "지금 확인할 수 없다"를
+        // "없다"로 보고하면 호출자가 멀쩡한 환경을 사라진 것으로 판정하게 된다 —
+        // 일시적 오류를 영구 상태로 굳히는 종류의 결함이다.
     }
 }
 

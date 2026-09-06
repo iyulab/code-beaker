@@ -1,6 +1,7 @@
 using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Core.Models;
 using CodeBeaker.Core.Sessions;
+using CodeBeaker.Core.Storage;
 using FluentAssertions;
 using Moq;
 using Xunit;
@@ -143,14 +144,66 @@ public sealed class SessionReconnectTests
         runtime.LastEnvironmentId.Should().BeNull();
     }
 
+    /// <summary>
+    /// "지금 확인할 수 없다"는 "없다"가 아니다. 예외를 null 로 바꿔 돌려주면 호출자가
+    /// 데몬 딸꾹질 한 번을 근거로 살아 있는 세션을 죽은 것으로 판정한다.
+    /// </summary>
     [Fact]
-    public async Task ShouldReturnNull_WhenReconnectingThrows()
+    public async Task ShouldPropagate_WhenReconnectingThrows()
     {
         var runtime = new ReconnectableFakeRuntime(null, new InvalidOperationException("daemon unreachable"));
         using var manager = ManagerWith(runtime);
 
-        var result = await manager.ReconstructEnvironmentAsync(SessionWith("container-abc"), CancellationToken.None);
+        var act = () => manager.ReconstructEnvironmentAsync(SessionWith("container-abc"), CancellationToken.None);
 
-        result.Should().BeNull();
+        await act.Should().ThrowAsync<InvalidOperationException>().WithMessage("daemon unreachable");
+    }
+
+    private static async Task<ISessionStore> StoreWith(Session session)
+    {
+        var store = new InMemorySessionStore();
+        await store.SaveSessionAsync(SessionMapper.ToSessionData(session));
+        return store;
+    }
+
+    /// <summary>
+    /// 환경이 사라졌는데 저장소에는 Active/Idle 인 세션이 남아 있으면, 실행할 수 없는
+    /// 세션이 목록에는 살아 있는 것으로 계속 보고된다 — 다중 인스턴스에서는 TTL 이
+    /// 유일한 청소 수단이 된다. 조회가 그 불일치를 맞춘다.
+    /// </summary>
+    [Fact]
+    public async Task GetSession_ReconcilesTheRecord_WhenTheEnvironmentIsGone()
+    {
+        var session = SessionWith("container-abc");
+        var store = await StoreWith(session);
+        using var manager = new SessionManager(store, new[] { new ReconnectableFakeRuntime(null) });
+
+        var loaded = await manager.GetSessionAsync(session.SessionId);
+
+        loaded.Should().NotBeNull();
+        loaded!.State.Should().Be(SessionState.Closed);
+        loaded.Environment.Should().BeNull();
+
+        // 기록도 함께 정리된다 — 상태만 바꾸고 남겨 두면 같은 좀비를 다음 조회가 또 만난다.
+        (await store.GetSessionAsync(session.SessionId)).Should().BeNull();
+    }
+
+    /// <summary>
+    /// 반대 방향의 보장: 확인이 불가능한 사정으로는 기록을 지우지 않는다.
+    /// </summary>
+    [Fact]
+    public async Task GetSession_KeepsTheRecord_WhenReconnectionCannotBeDetermined()
+    {
+        var session = SessionWith("container-abc");
+        var store = await StoreWith(session);
+        var runtime = new ReconnectableFakeRuntime(null, new InvalidOperationException("daemon unreachable"));
+        using var manager = new SessionManager(store, new[] { runtime });
+
+        var loaded = await manager.GetSessionAsync(session.SessionId);
+
+        loaded.Should().NotBeNull();
+        loaded!.State.Should().Be(SessionState.Active);
+        loaded.Environment.Should().BeNull();
+        (await store.GetSessionAsync(session.SessionId)).Should().NotBeNull();
     }
 }

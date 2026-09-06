@@ -135,14 +135,46 @@ public sealed class SessionManager : ISessionManager, IDisposable
         if (!_activeEnvironments.TryGetValue(sessionId, out var environment))
         {
             // 캐시에 없으면 재구성 (다른 API 인스턴스에서 생성된 경우)
-            environment = await ReconstructEnvironmentAsync(session, cancellationToken);
-            if (environment != null)
+            try
             {
-                _activeEnvironments[sessionId] = environment;
+                environment = await ReconstructEnvironmentAsync(session, cancellationToken);
             }
+            catch
+            {
+                // 지금은 확인할 수 없다(데몬 미기동 등). 상태를 건드리지 않고 그대로 돌려준다 —
+                // 일시적 장애를 근거로 세션 기록을 없애면 복구 가능한 세션이 사라진다.
+                session.Environment = null;
+                return session;
+            }
+
+            if (environment == null)
+            {
+                // 되살릴 환경이 확실히 없다. 여기서 상태를 맞춰 주지 않으면 저장소에는
+                // Active/Idle 인 세션이 남고, 실제로는 실행할 수 없는데도 목록에는 살아 있는
+                // 것으로 계속 보고된다(다중 인스턴스에서는 TTL 이 유일한 청소 수단이 된다).
+                return await ReconcileDeadSessionAsync(session, cancellationToken);
+            }
+
+            _activeEnvironments[sessionId] = environment;
         }
 
         session.Environment = environment;
+        return session;
+    }
+
+    /// <summary>
+    /// 환경이 사라진 세션을 기록상으로도 종료 처리한다. 컨테이너를 정리할 대상이
+    /// 이미 없으므로 <see cref="CloseSessionAsync"/>와 달리 런타임에 손대지 않고
+    /// 상태만 맞춘다.
+    /// </summary>
+    private async Task<Session> ReconcileDeadSessionAsync(Session session, CancellationToken cancellationToken)
+    {
+        session.State = SessionState.Closed;
+        session.Environment = null;
+
+        _activeEnvironments.TryRemove(session.SessionId, out _);
+        await _sessionStore.RemoveSessionAsync(session.SessionId, cancellationToken);
+
         return session;
     }
 
@@ -159,29 +191,25 @@ public sealed class SessionManager : ISessionManager, IDisposable
             return null;
         }
 
-        try
-        {
-            var runtime = await _runtimeSelector.SelectByTypeAsync(
-                session.RuntimeType,
-                session.Language,
-                cancellationToken);
+        var runtime = await _runtimeSelector.SelectByTypeAsync(
+            session.RuntimeType,
+            session.Language,
+            cancellationToken);
 
-            // 프로세스 기반 런타임은 API 프로세스와 수명을 같이 해 재연결이 불가능하다.
-            if (runtime is not IReconnectableRuntime reconnectable)
-            {
-                return null;
-            }
-
-            return await reconnectable.ReconnectEnvironmentAsync(
-                session.ContainerId,
-                BuildRuntimeConfig(session.Config, session.SessionId),
-                cancellationToken);
-        }
-        catch
+        // 프로세스 기반 런타임은 API 프로세스와 수명을 같이 해 재연결이 불가능하다.
+        // 이 인스턴스의 캐시에 없다면 그 환경은 두 번 다시 돌아오지 않는다 — 확실한 부재다.
+        if (runtime is not IReconnectableRuntime reconnectable)
         {
-            // 재구성 실패 시 null 반환
             return null;
         }
+
+        // 예외를 삼키지 않는다. null 은 "확실히 없다"만 뜻하고, 확인 자체가 불가능한
+        // 사정은 호출자가 상태를 바꾸지 않도록 예외로 전달돼야 한다
+        // (<see cref="IReconnectableRuntime.ReconnectEnvironmentAsync"/> 계약).
+        return await reconnectable.ReconnectEnvironmentAsync(
+            session.ContainerId,
+            BuildRuntimeConfig(session.Config, session.SessionId),
+            cancellationToken);
     }
 
     /// <summary>

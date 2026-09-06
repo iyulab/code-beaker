@@ -15,9 +15,9 @@ public sealed class NativeProcessRuntimeTests
     private readonly NativeProcessRuntime _runtime = new();
 
     /// <summary>
-    /// 이 파일의 두 재현 테스트는 셸을 통해 프로세스를 띄운다. 셸 이름과 인자 형식이
-    /// 플랫폼마다 다르므로 여기서 한 번만 갈라 두고, 테스트 본문은 무엇을 재현하려는지에
-    /// 집중한다. 이 갈래가 없으면 Windows 전용 명령이 리눅스 CI 에서 실패한다.
+    /// 셸을 통해 프로세스를 띄우는 재현 테스트용. 셸 이름과 인자 형식이 플랫폼마다
+    /// 다르므로 여기서 한 번만 갈라 두고, 테스트 본문은 무엇을 재현하려는지에 집중한다.
+    /// 이 갈래가 없으면 Windows 전용 명령이 리눅스 CI 에서 실패한다.
     /// </summary>
     private static ExecuteShellCommand Shell(string windowsScript, string posixScript)
         => OperatingSystem.IsWindows()
@@ -169,10 +169,18 @@ public sealed class NativeProcessRuntimeTests
     /// a grandchild can inherit the parent's redirected stdout/stderr pipe handles, so the
     /// pipe's write end stays open (and <c>ReadToEndAsync</c> never sees EOF) for as long as
     /// the grandchild keeps running, timeout or not.
+    ///
+    /// Windows-only on purpose. The behaviour under test — a grandchild inheriting the
+    /// parent's pipe handles so the read never sees EOF — is a Windows handle-inheritance
+    /// trait; POSIX shells detach differently, so a "same idea, different shell" script
+    /// would assert an outcome nobody has observed there. A test that has never run on
+    /// the platform it claims to cover is worse than one that says it does not cover it.
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public async Task ExecuteShellCommand_WithDetachedGrandchildStillRunning_TimesOutInsteadOfHangingForever()
     {
+        Skip.IfNot(OperatingSystem.IsWindows(), "Reproduces a Windows handle-inheritance behaviour.");
+
         var workspace = Path.Combine(Path.GetTempPath(), $"native-test-{Guid.NewGuid():N}");
         try
         {
@@ -188,9 +196,11 @@ public sealed class NativeProcessRuntimeTests
             // grandchild ("ping -t", which never stops on its own) is what actually exposes
             // whether that detachment holds: if it doesn't, or if it inherits the outer
             // process's redirected stdout/stderr pipe either way, the read never sees EOF.
-            var result = await environment.ExecuteAsync(Shell(
-                "start /b ping -t 127.0.0.1",
-                "sh -c 'while true; do echo tick; sleep 1; done' &"));
+            var result = await environment.ExecuteAsync(new ExecuteShellCommand
+            {
+                CommandName = "cmd",
+                Args = ["/c", "start /b ping -t 127.0.0.1"],
+            });
 
             Assert.False(result.Success);
             Assert.Contains("timeout", result.Error, StringComparison.OrdinalIgnoreCase);
