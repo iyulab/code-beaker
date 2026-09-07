@@ -7,17 +7,16 @@
 - [README.md](README.md) — 프로젝트 개요, 빠른 시작, 구조
 - [docs/USAGE.md](docs/USAGE.md) — WebSocket API 사용법과 예제
 - [DEV_GUIDE.md](DEV_GUIDE.md) — 개발 환경 설정과 기여 절차
+- [CHANGELOG.md](CHANGELOG.md) — 릴리스별 변경 사항(깨는 변경 포함)
 
 ## 설계와 운영
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 시스템 설계
-- [docs/PRODUCTION_READY.md](docs/PRODUCTION_READY.md) — 프로덕션 준비 상태 (Phase 1-3 기준의 과거 문서)
 - [k8s/README.md](k8s/README.md) — Kubernetes 배포 매니페스트
-- [RELEASE_NOTES_v1.0.md](RELEASE_NOTES_v1.0.md) — v1.0 릴리스 노트
 
 ## 로드맵
 
-- [docs/TASKS.md](docs/TASKS.md) — 개발 로드맵 (과거 문서, 현재 상태는 릴리스 노트 참고)
+- [README.md](README.md#로드맵) — 이미 있는 것과 다음에 할 것
 
 ## 샘플
 

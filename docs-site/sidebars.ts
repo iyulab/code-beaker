@@ -6,8 +6,6 @@ const sidebars: SidebarsConfig = {
     'intro',
     'architecture',
     'usage',
-    'production',
-    'roadmap',
   ],
 
   // API 레퍼런스 사이드바

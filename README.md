@@ -334,25 +334,24 @@ CodeBeaker separates tests into two categories:
 - ✅ Run automatically on every push/PR
 - Fast execution (~1-2 minutes)
 - No external dependencies required
-- 93 tests covering core functionality
+- Cover the core, runtimes, and command layers
 
-**Integration Tests (Local Only)**
-- ⚠️ Require Docker and full runtime environment
-- Longer execution time (~5-10 minutes)
-- Run manually or on-demand
-- 54 tests for end-to-end scenarios
+**Integration Tests (CI + Local)**
+- ⚠️ Require Docker and the runtime images
+- Longer execution time (~2-5 minutes)
+- Run in CI on every push/PR, in a job that builds the runtime images first
+  and fails if any integration test is skipped
+- End-to-end scenarios against a live daemon
 
-### Test Results (v1.0)
+### Test Results
 
 ```
-Total Tests: 147
-Passed: 144 (98.1%)
-Failed: 3 (fork bomb variants - non-critical)
+Total: 288 passed, 0 failed, 9 skipped
 
-Categories:
-✅ Unit Tests: 93 tests (100%) - CI Enabled
-✅ Integration Tests: 54 tests (96.3%) - Local Only
-✅ Security Simulation: 43 tests (95.3%)
+Unit        199 passed (Core 114 · Runtimes 45 · Commands 40)
+Integration  89 passed
+Skipped       9 — Deno and Bun runtime tests, skipped when those
+                  runtimes are not installed on the machine
 ```
 
 ### Run Tests
@@ -405,8 +404,7 @@ Integration tests can be run manually on GitHub Actions:
 ### 핵심 문서
 - [사용자 가이드](docs/USAGE.md) - WebSocket API 사용법
 - [아키텍처](docs/ARCHITECTURE.md) - 시스템 설계
-- [프로덕션 가이드](docs/PRODUCTION_READY.md) - 배포 가이드
-- [릴리스 노트](RELEASE_NOTES_v1.0.md) - v1.0 릴리스 정보
+- [변경 사항](CHANGELOG.md) - 릴리스별 변경 사항(깨는 변경 포함)
 - [문서 인덱스](DOCUMENTATION_INDEX.md) - 전체 문서 목록
 
 ### API 문서
@@ -500,8 +498,7 @@ CodeBeaker/
 │   ├── CodeBeaker.Runtimes.Tests/    # Unit tests
 │   └── CodeBeaker.Integration.Tests/ # Integration tests (Docker required)
 ├── docs/                          # Core documentation
-├── docs-site/                     # Documentation site source
-└── RELEASE_NOTES_v1.0.md          # Release notes
+└── docs-site/                     # Documentation site source
 ```
 
 ### Build & Run
@@ -525,22 +522,21 @@ cd docs-site && npm start
 
 ## 로드맵
 
-### v1.0 (완료)
-- 다중 런타임 아키텍처 (5개 런타임)
-- 패키지 관리 (npm, pip)
-- 보안 하드닝 (5단계 방어)
-- 모니터링 (Prometheus, 헬스체크, 문서)
-- 프로덕션 준비 (98.1% 테스트 통과율)
+CodeBeaker는 `0.x` 단계다. 공개 계약은 아직 굳지 않았고, 더 나은 설계가 나오면
+마이너 버전에서 바꾼다.
 
-### v1.1+ (예정)
-- 향상된 fork bomb 탐지
-- 감사 로그 데이터베이스 영속성
-- 고급 속도 제한 (사용자 기반, 계층형)
-- 보안 대시보드 UI
+### 이미 있는 것
+- 다중 런타임 아키텍처 (Docker, Deno, Bun, Node.js, Python)
+- 세션 기반 실행 환경 재사용, 다른 인스턴스에서의 세션 재연결
+- 패키지 관리 (npm, pip)
+- 보안 계층 (입력 검증, 속도 제한, 감사 로깅, 리소스 상한)
+- 모니터링 (Prometheus 메트릭, 헬스체크)
+
+### 다음
+- 감사 로그 영속성
+- 사용자 기반·계층형 속도 제한
 - 다중 노드 분산 실행
 - 추가 런타임 (Ruby, Rust, Go)
-
-자세한 내용은 [RELEASE_NOTES_v1.0.md](RELEASE_NOTES_v1.0.md) 참조.
 
 ## 기여
 

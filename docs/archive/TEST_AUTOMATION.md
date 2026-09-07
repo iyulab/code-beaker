@@ -474,7 +474,7 @@ dotnet watch test
 ## 추가 리소스
 
 ### 문서
-- [개발자 가이드](../DEV_GUIDE.md)
+- [개발자 가이드](../../DEV_GUIDE.md)
 - [사용자 가이드](../USAGE.md)
 - [아키텍처 문서](./CSHARP_ARCHITECTURE.md)
 

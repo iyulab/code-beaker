@@ -1,14 +1,12 @@
 # CodeBeaker 아키텍처 설계 문서
 
-> ⚠️ **Note**: This document contains legacy architecture information (up to Phase 5).
->
-> **For v1.0 architecture with Phase 11 security**, see:
-> - [RELEASE_NOTES_v1.0.md](../RELEASE_NOTES_v1.0.md) - v1.0 release notes
-> - [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md) - Complete documentation index
+> ⚠️ **Note**: This document describes the session/runtime core. The security
+> layers added later are summarized in the project README; this document has
+> not been rewritten around them.
 
 ---
 
-## 개요 (Legacy - up to Phase 5)
+## 개요
 
 CodeBeaker는 **Multi-Runtime 지원 세션 기반 코드 실행 플랫폼**으로, WebSocket + JSON-RPC 2.0 프로토콜을 사용하여 실시간 양방향 통신을 제공합니다.
 
@@ -19,8 +17,6 @@ CodeBeaker는 **Multi-Runtime 지원 세션 기반 코드 실행 플랫폼**으�
 3. **Command Pattern**: Type-safe 명령 시스템
 4. **Runtime Abstraction**: IExecutionRuntime 인터페이스 기반 확장 가능 설계
 5. **JSON-RPC 2.0**: 표준 프로토콜 준수
-
-**v1.0 Update**: Added 5-layer security architecture (Phase 11).
 
 ---
 
@@ -523,7 +519,9 @@ Docker 환경은 컨테이너를 `sleep infinity`로 띄워 두고 명령마다 
 public sealed class Session
 {
     public string SessionId { get; set; }          // GUID
-    public string ContainerId { get; set; }        // Docker container ID
+    public string EnvironmentId { get; set; }      // runtime-issued environment id
+                                                   // (Docker: container id)
+    public RuntimeType RuntimeType { get; set; }   // Docker, Deno, Bun, Node, ...
     public string Language { get; set; }           // python, javascript, go, csharp
     public DateTime CreatedAt { get; set; }
     public DateTime LastActivity { get; set; }
@@ -690,9 +688,3 @@ GET http://localhost:5000/health
 ## 참조 문서
 
 - [사용자 가이드](USAGE.md)
-- [릴리스 노트](../RELEASE_NOTES_v1.0.md)
-- [프로덕션 준비](PRODUCTION_READY.md)
-
----
-
-**CodeBeaker Architecture v1.0** - 2025-10-27

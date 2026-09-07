@@ -1,24 +1,17 @@
-# CodeBeaker 프로덕션 준비 완료 보고서
+# CodeBeaker 프로덕션 준비 완료 보고서 (보관 문서)
 
-> ⚠️ **Note**: This document contains legacy production readiness information (Phase 1-3 only).
+> 📦 **Archived**. This is a status report written during early development
+> (Phase 1-3). It does not describe how CodeBeaker behaves today — its API
+> examples, test counts and deployment notes have all moved on.
 >
-> **For current information**, see:
-> - [RELEASE_NOTES_v1.0.md](../RELEASE_NOTES_v1.0.md) - v1.0 release notes
-> - [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md) - Index of the documents in this repository
+> Current documents: [README.md](../../README.md) ·
+> [docs/USAGE.md](../USAGE.md) · [docs/ARCHITECTURE.md](../ARCHITECTURE.md)
 
 ---
 
-## 개요 (Legacy - Phase 1-3)
+## 개요 (Phase 1-3 시점의 기록)
 
-**완료일**: 2025-10-27
-**상태**: ⚠️ **OUTDATED - See v1.0 guides above**
-
-**v1.0 Status**:
-- ✅ All 11 Phases Complete
-- ✅ 147 tests (98.1% pass rate)
-- ✅ Security hardening (5-layer defense)
-- ✅ Package management (npm, pip)
-- ✅ Production ready with comprehensive deployment guide
+**작성일**: 2025-10-27
 
 ---
 
@@ -49,7 +42,7 @@
 - Dependency Injection 설정
 - Background Cleanup Worker
 
-**Note**: Phases 4-11 were completed after this document. See [RELEASE_NOTES_v1.0.md](../RELEASE_NOTES_v1.0.md) for complete v1.0 information.
+**Note**: Later phases were completed after this document was written.
 
 ---
 

@@ -43,8 +43,8 @@ npm run build
 | README.md | intro.md | 소개 |
 | docs/ARCHITECTURE.md | architecture.md | 아키텍처 |
 | docs/USAGE.md | usage.md | 사용법 |
-| docs/PRODUCTION_READY.md | production.md | 프로덕션 |
-| docs/TASKS.md | roadmap.md | 로드맵 |
+
+`docs/archive/`는 과거 개발 단계의 기록이라 사이트로 발행하지 않는다.
 
 ## 👥 Contributors
 

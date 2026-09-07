@@ -1,16 +1,11 @@
 # CodeBeaker 개발 로드맵
 
-> ⚠️ **Note**: This document is outdated (shows v1.2.0 Phase 5).
->
-> **For current information**, see:
-> - [RELEASE_NOTES_v1.0.md](../RELEASE_NOTES_v1.0.md) - v1.0 release notes
-> - [DOCUMENTATION_INDEX.md](../DOCUMENTATION_INDEX.md) - Index of the documents in this repository
+> 📦 **Archived**. An early development roadmap, kept as a record of what was
+> planned when. It is not the current roadmap — see [README.md](../../README.md#로드맵).
 
 ---
 
-**실제 현재 버전**: v1.0 (All 11 Phases Complete)
-**최종 업데이트**: 2025
-**상태**: ✅ **프로덕션 준비 완료 with Security Hardening** 🚀
+**작성 시점**: 2025
 
 **주요 업데이트**:
 - ✅ Phase 6-11 완료 (Observability, Documentation, Enhanced Runtimes, Package Management, Security)

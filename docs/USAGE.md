@@ -141,7 +141,8 @@ asyncio.run(codebeaker_client())
   "id": 1,
   "result": {
     "sessionId": "abc123def456",
-    "containerId": "xyz789",
+    "environmentId": "xyz789",
+    "runtimeType": "Docker",
     "language": "python",
     "createdAt": "2025-10-27T12:00:00Z",
     "state": "Active",
@@ -286,7 +287,8 @@ asyncio.run(codebeaker_client())
     "sessions": [
       {
         "sessionId": "abc123def456",
-        "containerId": "xyz789",
+        "environmentId": "xyz789",
+        "runtimeType": "Docker",
         "language": "python",
         "createdAt": "2025-10-27T12:00:00Z",
         "lastActivity": "2025-10-27T12:15:30Z",

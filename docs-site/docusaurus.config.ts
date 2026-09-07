@@ -131,14 +131,6 @@ const config: Config = {
               label: 'API Reference',
               to: '/docs/api/overview',
             },
-            {
-              label: 'Production Guide',
-              to: '/docs/production',
-            },
-            {
-              label: 'Development Roadmap',
-              to: '/docs/roadmap',
-            },
           ],
         },
         {

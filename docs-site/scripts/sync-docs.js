@@ -27,18 +27,6 @@ const DOCS_MAPPING = {
     sidebar_label: 'Usage Guide',
     title: 'API Usage Guide',
   },
-  'PRODUCTION_READY.md': {
-    target: 'production.md',
-    sidebar_position: 4,
-    sidebar_label: 'Production Guide',
-    title: 'Production Deployment',
-  },
-  'TASKS.md': {
-    target: 'roadmap.md',
-    sidebar_position: 5,
-    sidebar_label: 'Roadmap',
-    title: 'Development Roadmap',
-  },
 };
 
 // README를 intro로 변환
