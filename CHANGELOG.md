@@ -33,10 +33,13 @@ in minor releases, and this file is where a consumer finds out about them.
 
 ### Changed
 
-- **Docker sessions get `NetworkMode: bridge` when `AllowNet` is set**, instead
-  of always being created with `none`. The runtime advertised
-  `SupportsNetworkAccess: true` while never honoring it; consumers that relied
-  on the accidental hard isolation will observe the difference.
+- **Docker sessions now get `NetworkMode: bridge` by default**, instead of
+  always being created with `none`. The runtime advertised
+  `SupportsNetworkAccess: true` while never honoring it, so the isolation was
+  accidental rather than configured. Network access follows
+  `SecurityConfig.SandboxDisableNetwork`, which defaults to `false` — a session
+  created without an explicit security configuration reaches the network. Set
+  `SandboxDisableNetwork = true` to keep a container off the network.
 - **A session that exceeds its configured memory limit is now terminated**
   rather than only logged. `SessionConfig.MemoryLimitMB` previously enforced
   nothing.
