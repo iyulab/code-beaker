@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Docker.DotNet.Enhanced" Version="4.3.3" />
+    <PackageReference Include="Docker.DotNet.Enhanced" />
   </ItemGroup>
 
 </Project>

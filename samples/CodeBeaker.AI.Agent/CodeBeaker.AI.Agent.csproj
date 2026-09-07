@@ -6,19 +6,19 @@
 
   <ItemGroup>
     <!-- OpenAI API -->
-    <PackageReference Include="OpenAI" Version="2.0.0-beta.11" />
+    <PackageReference Include="OpenAI" />
 
     <!-- WebSocket Client -->
-    <PackageReference Include="Websocket.Client" Version="5.1.2" />
+    <PackageReference Include="Websocket.Client" />
 
     <!-- JSON Processing -->
 
     <!-- .env file loading -->
-    <PackageReference Include="DotNetEnv" Version="3.0.0" />
+    <PackageReference Include="DotNetEnv" />
 
     <!-- Logging -->
-    <PackageReference Include="Serilog" Version="4.4.0" />
-    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+    <PackageReference Include="Serilog" />
+    <PackageReference Include="Serilog.Sinks.Console" />
   </ItemGroup>
 
 </Project>
