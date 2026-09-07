@@ -1,4 +1,10 @@
-name: Deploy Documentation to GitHub Pages
+# The documentation site is built on every change that could break it, and published
+# only from `main`. Those used to be the same event: the build ran on push to `main`
+# alone, so `onBrokenLinks: throw` — the gate that stops a broken site from being
+# published — only ever fired *after* a change was merged, where the failure means the
+# published site quietly stops updating. Dependabot watches this site's npm
+# dependencies, so its bumps arrived as pull requests nothing built at all.
+name: Documentation
 
 on:
   push:
@@ -9,19 +15,38 @@ on:
       - 'README.md'
       - 'docs-site/**'
       - '.github/workflows/docs-deploy.yml'
+  # The two path lists are written out rather than shared through a YAML anchor.
+  # Anchors are supported in workflow files, but nothing documents them as supported
+  # inside `on:` specifically, and a trigger that quietly never fires cannot be
+  # observed until after a change is merged — which is the exact failure this
+  # workflow exists to stop. `DocumentationWorkflowTests` keeps the two in step.
+  #
+  # Deliberately not restricted to pull requests targeting `main`: work on this
+  # repository happens on release branches too, and a broken site is worth catching
+  # wherever the change is proposed.
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'docs-site/**'
+      - '.github/workflows/docs-deploy.yml'
   workflow_dispatch:
 
+# Only the deploy job needs to write to Pages or mint an id-token; a pull request
+# build reads the repository and nothing else.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  # Publishing must not be cancelled or run twice at once, so every push shares the
+  # one "pages" group. Pull request builds are just checks, so they are grouped per
+  # branch and superseded by the next push to it.
+  group: ${{ github.event_name == 'pull_request' && format('docs-{0}', github.ref) || 'pages' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
+    name: Build the site
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -52,15 +77,25 @@ jobs:
           cd docs-site
           npm run build
 
+      # The artifact exists to hand the site to the deploy job. A pull request has no
+      # deploy job, and uploading from a check run is what the artifact-retention
+      # policy exists to prevent.
       - name: Upload artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs-site/build
 
   deploy:
+    name: Publish to GitHub Pages
+    if: github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     runs-on: ubuntu-latest
     needs: build
     steps:

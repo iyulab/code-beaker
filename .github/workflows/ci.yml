@@ -55,8 +55,10 @@ jobs:
           --collect:"XPlat Code Coverage" \
           --results-directory ./TestResults
 
-    # Unit test projects are listed explicitly here; a new one is not picked up
-    # until it is added to this job as well as to the solution.
+    # Unit test projects are listed explicitly here; a new one is not picked up until
+    # it is added to this workflow as well as to the solution. `WorkflowListTests`
+    # fails when one is missing, so the omission surfaces as a red build rather than
+    # as a project that quietly never runs on a runner.
     - name: Run command tests
       run: |
         dotnet test tests/CodeBeaker.Commands.Tests/ \
