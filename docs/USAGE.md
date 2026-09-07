@@ -545,7 +545,7 @@ ws.onmessage = (event) => {
   "params": {
     "sessionId": "abc123",
     "command": {
-      "type": "execute_code",
+      "type": "execute",
       "code": "const greeting: string = 'Hello from Deno!';\nconsole.log(greeting);\nconst sum = (a: number, b: number): number => a + b;\nconsole.log(`Sum: ${sum(10, 20)}`);"
     }
   }
@@ -589,7 +589,7 @@ ws.onmessage = (event) => {
   "params": {
     "sessionId": "abc123",
     "command": {
-      "type": "execute_code",
+      "type": "execute",
       "code": "// Import from file\nimport('./calculator.ts');"
     }
   }
@@ -623,7 +623,7 @@ ws.onmessage = (event) => {
   "params": {
     "sessionId": "abc123",
     "command": {
-      "type": "execute_code",
+      "type": "execute",
       "code": "await Deno.writeTextFile('/workspace/data.txt', 'Hello!');\nconst content = await Deno.readTextFile('/workspace/data.txt');\nconsole.log(content);"
     }
   }
@@ -637,7 +637,7 @@ ws.onmessage = (event) => {
   "params": {
     "sessionId": "abc123",
     "command": {
-      "type": "execute_code",
+      "type": "execute",
       "code": "const response = await fetch('https://api.github.com');"
     }
   }
@@ -695,7 +695,7 @@ for (let i = 0; i < 10; i++) {
     params: {
       sessionId: sessionId,
       command: {
-        type: 'execute_code',
+        type: 'execute',
         code: `console.log('Iteration ${i}');`
       }
     }
@@ -767,7 +767,7 @@ for (let i = 0; i < 10; i++) {
 
 ```json
 {
-  "type": "create_directory",
+  "type": "create_dir",
   "path": "/workspace/data"
 }
 ```
@@ -779,32 +779,78 @@ for (let i = 0; i < 10; i++) {
 ```json
 {
   "type": "copy_file",
-  "sourcePath": "/workspace/file1.txt",
-  "destinationPath": "/workspace/file2.txt"
+  "source": "/workspace/file1.txt",
+  "destination": "/workspace/file2.txt"
 }
 ```
 
-### 6. DeleteFileCommand
-
-**파일 삭제**
-
-```json
-{
-  "type": "delete_file",
-  "path": "/workspace/file.txt"
-}
-```
-
-### 7. ListDirectoryCommand
+### 6. ListFilesCommand
 
 **디렉토리 목록 조회**
 
 ```json
 {
-  "type": "list_directory",
-  "path": "/workspace"
+  "type": "list_files",
+  "path": "/workspace",
+  "recursive": false,
+  "pattern": "*.py"
 }
 ```
+
+### 7. ExecuteCodeCommand
+
+**소스 코드 직접 실행** — 파일로 쓰지 않고 코드를 그대로 넘긴다.
+
+```json
+{
+  "type": "execute",
+  "language": "python",
+  "code": "print('hello')"
+}
+```
+
+### 8. InstallPackagesCommand
+
+**패키지 설치**
+
+```json
+{
+  "type": "install_packages",
+  "packages": ["requests", "numpy"]
+}
+```
+
+### 9. DiffCommand
+
+**두 파일 또는 두 문자열의 차이 생성**
+
+```json
+{
+  "type": "diff",
+  "originalPath": "/workspace/before.py",
+  "modifiedPath": "/workspace/after.py"
+}
+```
+
+### 10. ApplyPatchCommand
+
+**패치 적용**
+
+```json
+{
+  "type": "apply_patch",
+  "patch": "--- a/file.py
++++ b/file.py
+@@ -1 +1 @@
+-old
++new
+",
+  "targetPath": "/workspace"
+}
+```
+
+> **런타임마다 지원하는 타입이 다르다.** 지원하지 않는 조합은 거절되며, 모든 런타임이
+> 처리하는 것은 `shell` 뿐이다. 조합표는 `ARCHITECTURE.md` 의 「Command 타입 시스템」 절에 있다.
 
 ---
 

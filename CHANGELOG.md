@@ -78,9 +78,17 @@ in minor releases, and this file is where a consumer finds out about them.
   discriminator alone carries `"type"` on the wire, so the JSON shape a client
   sends and receives is unchanged. Serializing a command as its base type also
   no longer writes `"type"` twice.
-- **`docs/USAGE.md` named the shell command type `execute_shell`.** The
-  discriminator has always been `shell`; the examples now match what the
-  server accepts.
+- **The documented command types did not match the ones the server accepts.**
+  `docs/USAGE.md` named the shell type `execute_shell` (it is `shell`), used
+  `execute_code` (it is `execute`), `create_directory` (`create_dir`) and
+  `sourcePath`/`destinationPath` on a copy (`source`/`destination`), and
+  documented two commands that do not exist at all, `delete_file` and
+  `list_directory`. `docs/ARCHITECTURE.md` listed seven command types, naming
+  the same two non-existent ones and omitting five real ones, and left `Python`
+  out of the `RuntimeType` enum it reproduces. Every command type named in the
+  documentation now exists, and the architecture document carries the table of
+  which runtimes accept which types — support has always varied by runtime, and
+  only `shell` is accepted everywhere.
 
 ## [0.2.0]
 

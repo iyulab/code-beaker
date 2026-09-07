@@ -125,6 +125,7 @@ public enum RuntimeType
     Deno,          // 프로세스 기반 (빠른 시작)
     Bun,           // 프로세스 기반 (초고속)
     NodeJs,        // 프로세스 기반 (호환성)
+    Python,        // 프로세스 기반
     WebAssembly,   // WASM 기반 (극한 격리)
     V8Isolate,     // V8 격리 (경량)
     NativeProcess  // 네이티브 프로세스
@@ -232,10 +233,10 @@ deno run \
 
 #### 지원 Command 타입
 1. **ExecuteCodeCommand**: TypeScript/JavaScript 코드 직접 실행
-2. **WriteFileCommand**: 파일 생성/수정
-3. **ReadFileCommand**: 파일 읽기
-4. **CreateDirectoryCommand**: 디렉토리 생성
-5. **ListDirectoryCommand**: 디렉토리 목록
+2. **ExecuteShellCommand**: Shell 실행
+3. **WriteFileCommand**: 파일 생성/수정
+4. **ReadFileCommand**: 파일 읽기
+5. **CreateDirectoryCommand**: 디렉토리 생성
 
 ### 성능 비교
 
@@ -328,24 +329,44 @@ public sealed class SessionManager : ISessionManager
 
 #### Command 타입 시스템
 
-**7가지 Command 타입** (JSON 다형성):
+**10가지 Command 타입** (JSON 다형성). 아래 `type` 값이 와이어 판별자다:
 
-| Command | 용도 | Docker API |
-|---------|------|-----------|
-| WriteFileCommand | 파일 작성 | `tee <path>` |
-| ReadFileCommand | 파일 읽기 | `cat <path>` |
-| ExecuteShellCommand | Shell 실행 | 직접 명령 |
-| CreateDirectoryCommand | 디렉토리 생성 | `mkdir -p <path>` |
-| CopyFileCommand | 파일 복사 | `cp <src> <dst>` |
-| DeleteFileCommand | 파일 삭제 | `rm -rf <path>` |
-| ListDirectoryCommand | 목록 조회 | `ls -la <path>` |
+| Command | `type` | 용도 |
+|---------|--------|------|
+| ExecuteCodeCommand | `execute` | 소스 코드 직접 실행 |
+| ExecuteShellCommand | `shell` | Shell 실행 |
+| WriteFileCommand | `write_file` | 파일 작성 |
+| ReadFileCommand | `read_file` | 파일 읽기 |
+| CreateDirectoryCommand | `create_dir` | 디렉토리 생성 |
+| CopyFileCommand | `copy_file` | 파일 복사 |
+| ListFilesCommand | `list_files` | 목록 조회 |
+| InstallPackagesCommand | `install_packages` | 패키지 설치 |
+| DiffCommand | `diff` | 차이 생성 |
+| ApplyPatchCommand | `apply_patch` | 패치 적용 |
+
+**지원 범위는 런타임마다 다르다.** 타입이 선언돼 있다고 모든 런타임이 처리하는 것은 아니며,
+지원하지 않는 조합은 `NotSupportedException` 으로 거절된다. 모든 런타임이 처리하는 것은
+`shell` 하나뿐이다.
+
+| `type` | Docker | Python | Node | Deno | Bun | Native |
+|--------|:------:|:------:|:----:|:----:|:---:|:------:|
+| `shell` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| `execute` | — | ✅ | ✅ | ✅ | ✅ | — |
+| `write_file` | ✅ | — | — | ✅ | ✅ | — |
+| `read_file` | ✅ | — | — | ✅ | ✅ | — |
+| `create_dir` | ✅ | — | — | ✅ | ✅ | — |
+| `copy_file` | ✅ | — | — | — | — | — |
+| `list_files` | ✅ | — | — | — | — | — |
+| `diff` | ✅ | — | — | — | — | — |
+| `apply_patch` | ✅ | — | — | — | — | — |
+| `install_packages` | — | ✅ | ✅ | — | — | — |
 
 #### JSON 다형성 구조
 ```csharp
 [JsonPolymorphic(TypeDiscriminatorPropertyName = "type")]
 [JsonDerivedType(typeof(WriteFileCommand), typeDiscriminator: "write_file")]
 [JsonDerivedType(typeof(ReadFileCommand), typeDiscriminator: "read_file")]
-// ... 7개 타입
+// ... 위 표의 10개 타입
 public abstract class Command
 {
     public abstract string Type { get; }
@@ -363,7 +384,7 @@ public async Task<CommandResult> ExecuteAsync(
         WriteFileCommand write => await ExecuteWriteFileAsync(write, containerId),
         ReadFileCommand read => await ExecuteReadFileAsync(read, containerId),
         ExecuteShellCommand shell => await ExecuteShellAsync(shell, containerId),
-        // ... 7가지 패턴
+        // ... 그 런타임이 지원하는 나머지 타입
         _ => throw new NotSupportedException($"Command type {command.Type}")
     };
 }
@@ -546,12 +567,15 @@ public sealed class Session
 public sealed class SessionConfig
 {
     public string Language { get; set; }
+    public RuntimePreference? RuntimePreference { get; set; }  // 속도/보안/메모리/균형
+    public RuntimeType? RuntimeType { get; set; }              // 지정하면 선택을 건너뛴다
     public string? DockerImage { get; set; }
     public int IdleTimeoutMinutes { get; set; } = 30;
     public int MaxLifetimeMinutes { get; set; } = 120;
     public bool PersistFilesystem { get; set; } = true;
     public long? MemoryLimitMB { get; set; }
     public long? CpuShares { get; set; }
+    public SecurityConfig Security { get; set; } = new();
 }
 ```
 
