@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\CodeBeaker.Core\CodeBeaker.Core.csproj" />
@@ -6,17 +6,8 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
-
-  <PropertyGroup>
-    <Version>0.3.0</Version>
-    <Authors>iyulab</Authors>
+    <IsPackable>true</IsPackable>
     <Description>Process-based language runtimes (Docker, Deno, Bun, Node, Python) for CodeBeaker.</Description>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/iyulab/code-beaker</RepositoryUrl>
   </PropertyGroup>
 
   <ItemGroup>

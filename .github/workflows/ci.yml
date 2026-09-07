@@ -389,7 +389,7 @@ jobs:
   # Job 7: nuget.org 발행 (태그 푸시 시) — 인증은 nuget.org Trusted Publishing(GitHub OIDC → 1시간짜리 임시 API 키).
   # 장기 API 키 시크릿을 두지 않는다. 1회 선행 조건(사람): nuget.org에 정책 등록(Repository Owner/Repository/Workflow File
   # = 이 리포/ci.yml) + 리포 시크릿 NUGET_USER(nuget.org 프로필명). 절차 전체는 docs/RELEASING.md.
-  # 버전의 단일 출처는 각 csproj의 <Version>이다 — 태그는 트리거일 뿐이며 불일치하면 발행 전에 실패한다.
+  # 버전의 단일 출처는 Directory.Build.props의 <Version>이다 — 태그는 트리거일 뿐이며 불일치하면 발행 전에 실패한다.
   publish-nuget:
     name: Publish NuGet Packages
     runs-on: ubuntu-latest
@@ -413,28 +413,24 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
-    - name: Assert tag matches every package <Version>
+    - name: Assert tag matches the release <Version>
       run: |
         tag_version="${GITHUB_REF_NAME#v}"
-        status=0
-        for proj in $PACKABLE_PROJECTS; do
-          csproj_version=$(grep -o '<Version>[^<]*</Version>' "$proj" | sed -e 's/<Version>//' -e 's,</Version>,,')
-          if [ -z "$csproj_version" ]; then
-            echo "::error file=$proj::no <Version> element found - every packable project must declare one."
-            status=1
-          elif [ "$csproj_version" != "$tag_version" ]; then
-            echo "::error file=$proj::<Version> is '$csproj_version' but the tag is 'v$tag_version' - bump the csproj (and CHANGELOG) before tagging."
-            status=1
-          else
-            echo "$proj: $csproj_version == v$tag_version"
-          fi
-        done
-        exit $status
+        props=Directory.Build.props
+        version=$(grep -o '<Version>[^<]*</Version>' "$props" | sed -e 's/<Version>//' -e 's,</Version>,,')
+        if [ -z "$version" ]; then
+          echo "::error file=$props::no <Version> element found - the release version is declared here."
+          exit 1
+        elif [ "$version" != "$tag_version" ]; then
+          echo "::error file=$props::<Version> is '$version' but the tag is 'v$tag_version' - bump $props (and CHANGELOG) before tagging."
+          exit 1
+        fi
+        echo "$props: $version == v$tag_version"
 
     - name: Pack
       run: |
         for proj in $PACKABLE_PROJECTS; do
-          dotnet pack "$proj" --configuration Release -p:ContinuousIntegrationBuild=true --output ./artifacts/nuget
+          dotnet pack "$proj" --configuration Release --output ./artifacts/nuget
         done
         ls -l ./artifacts/nuget
 

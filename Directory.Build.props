@@ -1,0 +1,30 @@
+<Project>
+
+  <!-- 모든 프로젝트 공통. 개별 csproj는 여기 없는 것만 적는다. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- CI에서만 deterministic 소스 경로로 빌드한다. 로컬 pack은 로컬 경로를 유지해 디버깅이 되게 둔다. -->
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!--
+    릴리스 버전의 단일 출처. 세 NuGet 패키지(Core·Commands·Runtimes)는 항상 같은 버전으로 함께 나가고,
+    발행 잡은 태그 vX.Y.Z가 이 값과 같은지 발행 전에 단언한다 — docs/RELEASING.md.
+  -->
+  <PropertyGroup>
+    <Version>0.3.0</Version>
+  </PropertyGroup>
+
+  <!-- NuGet 패키지 메타데이터. 패키지로 나가는 프로젝트만 IsPackable=true로 opt-in 한다. -->
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <Authors>iyulab</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/iyulab/code-beaker</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/iyulab/code-beaker</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+
+</Project>
