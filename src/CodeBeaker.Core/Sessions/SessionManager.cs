@@ -100,12 +100,6 @@ public sealed class SessionManager : ISessionManager, IDisposable
             Config = config
         };
 
-        // Docker Runtime이면 ContainerId도 설정
-        if (runtime.Type == Interfaces.RuntimeType.Docker)
-        {
-            session.ContainerId = environment.EnvironmentId;
-        }
-
         // 환경 캐싱 (메모리에만 유지)
         _activeEnvironments[sessionId] = environment;
 
@@ -186,7 +180,7 @@ public sealed class SessionManager : ISessionManager, IDisposable
         CancellationToken cancellationToken)
     {
         // 되살릴 대상 식별자가 없으면 재연결할 것도 없다.
-        if (string.IsNullOrEmpty(session.ContainerId))
+        if (string.IsNullOrEmpty(session.EnvironmentId))
         {
             return null;
         }
@@ -207,7 +201,7 @@ public sealed class SessionManager : ISessionManager, IDisposable
         // 사정은 호출자가 상태를 바꾸지 않도록 예외로 전달돼야 한다
         // (<see cref="IReconnectableRuntime.ReconnectEnvironmentAsync"/> 계약).
         return await reconnectable.ReconnectEnvironmentAsync(
-            session.ContainerId,
+            session.EnvironmentId,
             BuildRuntimeConfig(session.Config, session.SessionId),
             cancellationToken);
     }
@@ -320,12 +314,12 @@ public sealed class SessionManager : ISessionManager, IDisposable
             {
                 // Docker: 컨테이너 정리
                 await _docker.Containers.StopContainerAsync(
-                    session.ContainerId,
+                    session.EnvironmentId,
                     new ContainerStopParameters { WaitBeforeKillSeconds = 5 },
                     cancellationToken);
 
                 await _docker.Containers.RemoveContainerAsync(
-                    session.ContainerId,
+                    session.EnvironmentId,
                     new ContainerRemoveParameters { Force = true },
                     cancellationToken);
             }

@@ -108,6 +108,11 @@ try
     // Background services
     builder.Services.AddHostedService<SessionCleanupWorker>();
 
+    // The Docker-facing hosted services take the interface so they stay testable;
+    // the concrete client above is the single shared instance behind it.
+    builder.Services.AddSingleton<Docker.DotNet.IDockerClient>(sp =>
+        sp.GetRequiredService<Docker.DotNet.DockerClient>());
+
     // Phase 6.3: Graceful Shutdown & Stability
     builder.Services.AddHostedService<CodeBeaker.Core.Services.GracefulShutdownService>();
     builder.Services.AddHostedService<CodeBeaker.Runtimes.Docker.DockerConnectionMonitor>();

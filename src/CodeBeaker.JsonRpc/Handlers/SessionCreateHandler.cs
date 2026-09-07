@@ -45,7 +45,8 @@ public sealed class SessionCreateHandler : IJsonRpcHandler
         return new
         {
             sessionId = session.SessionId,
-            containerId = session.ContainerId,
+            environmentId = session.EnvironmentId,
+            runtimeType = session.RuntimeType.ToString(),
             language = session.Language,
             createdAt = session.CreatedAt,
             state = session.State.ToString(),

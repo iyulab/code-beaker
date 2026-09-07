@@ -17,7 +17,6 @@ public static class SessionMapper
         return new SessionData
         {
             SessionId = session.SessionId,
-            ContainerId = session.ContainerId,
             EnvironmentId = session.EnvironmentId,
             RuntimeType = session.RuntimeType,
             Language = session.Language,
@@ -38,7 +37,6 @@ public static class SessionMapper
         return new Session
         {
             SessionId = data.SessionId,
-            ContainerId = data.ContainerId,
             EnvironmentId = data.EnvironmentId,
             RuntimeType = data.RuntimeType,
             Environment = null, // 나중에 재구성

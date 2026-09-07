@@ -52,7 +52,6 @@ public sealed class MultiRuntimeSelectionTests : IDisposable
         // Assert
         Assert.NotNull(session);
         Assert.Equal(RuntimeType.Docker, session.RuntimeType);
-        Assert.NotEmpty(session.ContainerId);
         Assert.NotEmpty(session.EnvironmentId);
 
         // Cleanup
@@ -99,7 +98,7 @@ public sealed class MultiRuntimeSelectionTests : IDisposable
         // Assert
         Assert.NotNull(session);
         Assert.Equal(RuntimeType.Docker, session.RuntimeType);
-        Assert.NotEmpty(session.ContainerId);
+        Assert.NotEmpty(session.EnvironmentId);
 
         // Cleanup
         await _sessionManager.CloseSessionAsync(session.SessionId);

@@ -55,7 +55,11 @@ public interface ISessionStore
 public sealed class SessionData
 {
     public string SessionId { get; set; } = string.Empty;
-    public string ContainerId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Runtime-issued environment identifier — see
+    /// <see cref="Models.Session.EnvironmentId"/> for the contract.
+    /// </summary>
     public string EnvironmentId { get; set; } = string.Empty;
     public RuntimeType RuntimeType { get; set; }
     public string Language { get; set; } = string.Empty;

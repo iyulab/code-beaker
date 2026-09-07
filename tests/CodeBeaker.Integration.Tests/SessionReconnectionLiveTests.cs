@@ -95,7 +95,7 @@ public sealed class SessionReconnectionLiveTests : IDisposable
             Language = "python",
             RuntimeType = RuntimeType.Docker
         });
-        var containerId = session.ContainerId;
+        var containerId = session.EnvironmentId;
 
         await docker.Containers.StopContainerAsync(
             containerId, new ContainerStopParameters { WaitBeforeKillSeconds = 5 });

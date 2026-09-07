@@ -13,12 +13,11 @@ public sealed class Session
     public string SessionId { get; set; } = string.Empty;
 
     /// <summary>
-    /// 컨테이너 ID (Docker runtime일 때만 사용)
-    /// </summary>
-    public string ContainerId { get; set; } = string.Empty;
-
-    /// <summary>
-    /// 환경 ID (모든 runtime에서 사용)
+    /// Runtime-issued identifier of the execution environment backing this
+    /// session. Every runtime sets it: the Docker runtime uses the container
+    /// id, process-based runtimes use their own synthetic id. It is the key
+    /// <see cref="IReconnectableRuntime.ReconnectEnvironmentAsync"/> receives,
+    /// so a runtime must issue a value that survives the API process.
     /// </summary>
     public string EnvironmentId { get; set; } = string.Empty;
 

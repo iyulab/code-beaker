@@ -94,7 +94,7 @@ public sealed class SessionManagerTests : IDisposable
         // Assert
         Assert.NotNull(session);
         Assert.NotEmpty(session.SessionId);
-        Assert.NotEmpty(session.ContainerId);
+        Assert.NotEmpty(session.EnvironmentId);
         Assert.Equal("python", session.Language);
         Assert.Equal(SessionState.Active, session.State);
         Assert.Equal(0, session.ExecutionCount);
@@ -118,7 +118,7 @@ public sealed class SessionManagerTests : IDisposable
         // Assert
         Assert.NotNull(retrieved);
         Assert.Equal(created.SessionId, retrieved.SessionId);
-        Assert.Equal(created.ContainerId, retrieved.ContainerId);
+        Assert.Equal(created.EnvironmentId, retrieved.EnvironmentId);
 
         // Cleanup
         await _sessionManager.CloseSessionAsync(created.SessionId);

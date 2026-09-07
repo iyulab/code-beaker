@@ -42,8 +42,8 @@ public sealed class DockerHostConfigLiveTests : IDisposable
         var session = await _sessionManager.CreateSessionAsync(config);
         try
         {
-            Assert.NotEmpty(session.ContainerId);
-            return await inspect(session.ContainerId);
+            Assert.NotEmpty(session.EnvironmentId);
+            return await inspect(session.EnvironmentId);
         }
         finally
         {

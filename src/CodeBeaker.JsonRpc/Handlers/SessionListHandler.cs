@@ -27,7 +27,8 @@ public sealed class SessionListHandler : IJsonRpcHandler
             sessions = sessions.Select(s => new
             {
                 sessionId = s.SessionId,
-                containerId = s.ContainerId,
+                environmentId = s.EnvironmentId,
+                runtimeType = s.RuntimeType.ToString(),
                 language = s.Language,
                 createdAt = s.CreatedAt,
                 lastActivity = s.LastActivity,

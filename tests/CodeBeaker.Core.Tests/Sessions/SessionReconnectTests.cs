@@ -22,18 +22,23 @@ public sealed class SessionReconnectTests
     {
         private readonly IExecutionEnvironment? _reconnected;
         private readonly Exception? _throws;
+        private readonly RuntimeType _type;
 
-        public ReconnectableFakeRuntime(IExecutionEnvironment? reconnected, Exception? throws = null)
+        public ReconnectableFakeRuntime(
+            IExecutionEnvironment? reconnected,
+            Exception? throws = null,
+            RuntimeType type = RuntimeType.Docker)
         {
             _reconnected = reconnected;
             _throws = throws;
+            _type = type;
         }
 
         public string? LastEnvironmentId { get; private set; }
         public RuntimeConfig? LastConfig { get; private set; }
 
         public string Name => "fake-docker";
-        public RuntimeType Type => RuntimeType.Docker;
+        public RuntimeType Type => _type;
         public string[] SupportedEnvironments => new[] { Language };
         public Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
         public Task<IExecutionEnvironment> CreateEnvironmentAsync(RuntimeConfig config, CancellationToken cancellationToken = default)
@@ -69,14 +74,17 @@ public sealed class SessionReconnectTests
         public RuntimeCapabilities GetCapabilities() => new();
     }
 
-    private static Session SessionWith(string containerId, bool disableNetwork = false)
+    private static Session SessionWith(
+        string environmentId,
+        bool disableNetwork = false,
+        RuntimeType runtimeType = RuntimeType.Docker)
     {
         return new Session
         {
             SessionId = "session-1",
-            ContainerId = containerId,
+            EnvironmentId = environmentId,
             Language = Language,
-            RuntimeType = RuntimeType.Docker,
+            RuntimeType = runtimeType,
             State = SessionState.Active,
             Config = new SessionConfig
             {
@@ -130,6 +138,27 @@ public sealed class SessionReconnectTests
         var result = await manager.ReconstructEnvironmentAsync(SessionWith("container-abc"), CancellationToken.None);
 
         result.Should().BeNull();
+    }
+
+    /// <summary>
+    /// 재연결 가능 여부는 런타임이 컨테이너를 쓰는지가 아니라
+    /// <see cref="IReconnectableRuntime"/> 구현 여부로만 갈려야 한다.
+    /// 예전에는 Docker 전용 필드가 게이트를 쥐고 있어, 컨테이너가 아닌 재연결 가능
+    /// 런타임의 세션이 식별자를 갖고도 조용히 재연결되지 않았다.
+    /// </summary>
+    [Fact]
+    public async Task ShouldReconnect_WhenANonContainerRuntimeSupportsIt()
+    {
+        var environment = Mock.Of<IExecutionEnvironment>();
+        var runtime = new ReconnectableFakeRuntime(environment, type: RuntimeType.Deno);
+        using var manager = ManagerWith(runtime);
+
+        var result = await manager.ReconstructEnvironmentAsync(
+            SessionWith("env-abc", runtimeType: RuntimeType.Deno),
+            CancellationToken.None);
+
+        result.Should().BeSameAs(environment);
+        runtime.LastEnvironmentId.Should().Be("env-abc");
     }
 
     [Fact]

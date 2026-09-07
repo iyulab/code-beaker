@@ -18,7 +18,6 @@ public class SessionStoreContractTests
     private static SessionData NewSession(string id = "s-1") => new()
     {
         SessionId = id,
-        ContainerId = "container-1",
         EnvironmentId = "container-1",
         RuntimeType = RuntimeType.Docker,
         Language = "python",
@@ -138,7 +137,7 @@ public class SessionStoreContractTests
 
         Assert.NotNull(loaded);
         Assert.Equal(session.SessionId, loaded!.SessionId);
-        Assert.Equal(session.ContainerId, loaded.ContainerId);
+        Assert.Equal(session.EnvironmentId, loaded.EnvironmentId);
         Assert.Equal(session.ExecutionCount, loaded.ExecutionCount);
         Assert.Equal(session.State, loaded.State);
         Assert.Equal(session.Config.IdleTimeoutMinutes, loaded.Config.IdleTimeoutMinutes);
