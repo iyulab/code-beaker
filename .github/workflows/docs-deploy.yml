@@ -30,7 +30,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # Node 20 left support on 2026-04-30. 24 is the generation this repository
+          # already treats as current — the JavaScript sandbox image is built from it
+          # and the language catalog advertises it — so the site is built on the same one.
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: docs-site/package-lock.json
 

@@ -62,6 +62,37 @@ updates:
     commit-message:
       prefix: "chore(docker)"
 
+  # The documentation site is a tracked npm project (package.json and its lock file
+  # are both in the repository), and it was the one ecosystem here nothing watched.
+  # It builds a published artifact — the public documentation — so its dependencies
+  # age the same way every other shipped input does.
+  #
+  # The five `@docusaurus/*` packages are pinned to one exact version rather than a
+  # range, because they are released together and a site cannot build from a mix of
+  # them; grouping is what keeps an update from arriving as five pull requests that
+  # each fail on their own. `react` and `react-dom` carry the same constraint between
+  # the two of them. Everything else here moves independently and is left alone.
+  #
+  # Majors are not ignored, for the same reason they are not ignored for the runtime
+  # images: a major here is a migration, and a migration is a decision someone should
+  # see rather than one that quietly never surfaces.
+  - package-ecosystem: "npm"
+    directory: "/docs-site"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(docs)"
+    groups:
+      docusaurus:
+        patterns:
+          - "@docusaurus/*"
+      react:
+        patterns:
+          - "react"
+          - "react-dom"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
