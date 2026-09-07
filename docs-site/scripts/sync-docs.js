@@ -31,6 +31,18 @@ const DOCS_MAPPING = {
     sidebar_label: 'Usage Guide',
     title: 'API Usage Guide',
   },
+  // The API reference used to be a string constant in this file. It listed three REST
+  // routes, two of which the server has never served and the third under the wrong
+  // name — nothing compared it to the application, so the published site advertised
+  // them anyway. It is a repository document now, checked against the running app by
+  // `PublicHttpSurfaceTests`, and reaches the site through the same path as every
+  // other document here.
+  'API.md': {
+    target: 'api/overview.md',
+    sidebar_position: 1,
+    sidebar_label: 'Overview',
+    title: 'API Reference',
+  },
 };
 
 // README를 intro로 변환
@@ -152,6 +164,11 @@ function siteRoutes() {
 function rewriteLinks(content, sourceFile) {
   const routes = siteRoutes();
   const sourceDir = path.posix.dirname(sourceFile.split(path.sep).join('/'));
+  // A link into the site is resolved by the browser against the page carrying it, so
+  // it has to be written relative to where *this* document lands. Every page used to
+  // sit at the docs root, which made `./<route>` right by accident; it stops being
+  // right as soon as one of them is nested.
+  const currentDir = path.posix.dirname(routes[sourceFile.split(path.sep).join('/')] ?? '.');
 
   return content.replace(/(!?)\[([^\]]*)\]\(([^)\s]+)\)/g, (match, bang, text, target) => {
     if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|\/|#)/i.test(target)) {
@@ -174,7 +191,9 @@ function rewriteLinks(content, sourceFile) {
     // 이 사이트가 함께 발행하는 문서라면 사이트 안에 머무른다 — 렌더된 페이지가
     // 있는데 원본 마크다운으로 내보낼 이유가 없다.
     if (!bang && routes[repoPath]) {
-      return `[${text}](./${routes[repoPath]}${anchor})`;
+      const relative = path.posix.relative(currentDir, routes[repoPath]);
+      const inSite = relative.startsWith('.') ? relative : `./${relative}`;
+      return `[${text}](${inSite}${anchor})`;
     }
 
     const base = isDirectory ? REPO_TREE : REPO_BLOB;
@@ -191,28 +210,15 @@ async function syncFile(sourceFile, targetFile, metadata) {
 
   console.log(`Syncing: ${sourceFile} → ${targetFile}`);
 
-  try {
-    // 소스 파일 읽기
-    let content = await fs.readFile(sourcePath, 'utf-8');
+  // 링크는 리포 루트 기준으로 풀어야 하므로 소스의 리포 상대 경로를 넘긴다.
+  const content = transformMarkdown(
+    await fs.readFile(sourcePath, 'utf-8'),
+    path.posix.join('docs', sourceFile));
 
-    // 내용 변환
-    // 링크는 리포 루트 기준으로 풀어야 하므로 소스의 리포 상대 경로를 넘긴다.
-    content = transformMarkdown(content, path.posix.join('docs', sourceFile));
+  await fs.ensureDir(path.dirname(targetPath));
+  await fs.writeFile(targetPath, generateFrontmatter(metadata) + content, 'utf-8');
 
-    // Frontmatter 추가
-    const frontmatter = generateFrontmatter(metadata);
-    const finalContent = frontmatter + content;
-
-    // 타겟 디렉토리 생성
-    await fs.ensureDir(path.dirname(targetPath));
-
-    // 파일 쓰기
-    await fs.writeFile(targetPath, finalContent, 'utf-8');
-
-    console.log(`✅ Synced: ${targetFile}`);
-  } catch (error) {
-    console.error(`❌ Failed to sync ${sourceFile}:`, error.message);
-  }
+  console.log(`✅ Synced: ${targetFile}`);
 }
 
 /**
@@ -221,80 +227,14 @@ async function syncFile(sourceFile, targetFile, metadata) {
 async function syncReadme() {
   console.log('Syncing README.md → intro.md');
 
-  try {
-    let content = await fs.readFile(README_MAPPING.source, 'utf-8');
+  const content = transformMarkdown(
+    await fs.readFile(README_MAPPING.source, 'utf-8'), 'README.md');
 
-    // README 특별 처리
-    content = transformMarkdown(content, 'README.md');
+  const targetPath = path.join(DOCS_TARGET, README_MAPPING.target);
+  await fs.ensureDir(path.dirname(targetPath));
+  await fs.writeFile(targetPath, generateFrontmatter(README_MAPPING) + content, 'utf-8');
 
-    // Badges 유지하지만 위치 조정
-    // 기존 H1 제거되었으므로 badges를 상단에 배치
-
-    const frontmatter = generateFrontmatter(README_MAPPING);
-    const finalContent = frontmatter + content;
-
-    const targetPath = path.join(DOCS_TARGET, README_MAPPING.target);
-    await fs.ensureDir(path.dirname(targetPath));
-    await fs.writeFile(targetPath, finalContent, 'utf-8');
-
-    console.log('✅ Synced: intro.md');
-  } catch (error) {
-    console.error('❌ Failed to sync README:', error.message);
-  }
-}
-
-/**
- * API 문서 생성 (placeholder)
- */
-async function generateApiDocs() {
-  const apiDir = path.join(DOCS_TARGET, 'api');
-  await fs.ensureDir(apiDir);
-
-  // API Overview
-  const overviewContent = `---
-sidebar_position: 1
-sidebar_label: Overview
-title: API Reference
----
-
-# API Reference
-
-CodeBeaker provides RESTful API and WebSocket endpoints for code execution.
-
-## Endpoints
-
-### REST API
-
-- **POST /api/execute** - Execute code once
-- **GET /api/execute/:id/status** - Get execution status
-- **GET /api/languages** - List supported languages
-
-### WebSocket API (JSON-RPC 2.0)
-
-- **ws://localhost:5039/ws/jsonrpc** - WebSocket endpoint
-- Supports real-time streaming execution
-
-### Health Checks
-
-- **GET /health** - Overall health status
-- **GET /health/ready** - Readiness probe
-- **GET /health/live** - Liveness probe
-- **GET /health/startup** - Startup probe
-
-### Metrics
-
-- **GET /metrics** - Prometheus metrics
-
-For detailed API documentation, see [Usage Guide](../usage.md).
-`;
-
-  await fs.writeFile(
-    path.join(apiDir, 'overview.md'),
-    overviewContent,
-    'utf-8'
-  );
-
-  console.log('✅ Generated: api/overview.md');
+  console.log('✅ Synced: intro.md');
 }
 
 /**
@@ -318,12 +258,11 @@ async function main() {
     }
     console.log('');
 
-    // API 문서 생성
-    await generateApiDocs();
-    console.log('');
-
     console.log('✅ Documentation sync completed!');
   } catch (error) {
+    // The only error handler in this script. The sync steps above used to catch and log
+    // their own failures and carry on, which published a site quietly missing a page and
+    // left the build to fail later — if at all — on whatever referenced it.
     console.error('❌ Sync failed:', error);
     process.exit(1);
   }

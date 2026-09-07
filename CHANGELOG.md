@@ -94,9 +94,21 @@ in minor releases, and this file is where a consumer finds out about them.
 - **`Microsoft.AspNetCore.OpenApi` is no longer a dependency of the API
   server.** It was referenced but never called — the OpenAPI document and UI
   come from Swashbuckle — so it only added a package to resolve.
+- **`docs/API.md`** — every HTTP path the server routes, in one place: the
+  WebSocket endpoint, the language endpoints, the four health probes, and the
+  metrics endpoint. It replaces the API reference the documentation site used to
+  generate from a list written by hand, and is checked against the running
+  application in both directions, so a path it names that the server does not
+  serve — or a route it fails to mention — breaks the build.
 
 ### Fixed
 
+- **The published API reference listed REST endpoints that do not exist.** It
+  advertised `POST /api/execute` and `GET /api/execute/:id/status`, which the
+  server has never served, and named the language endpoint `GET /api/languages`
+  rather than `GET /api/Language`. The list was a constant in the documentation
+  site's build script with nothing comparing it to the application. It is now
+  `docs/API.md` (see Added) and the comparison is a test.
 - **The Python sandbox image was advertised as 3.12; it is `python:3.11-slim`.**
   `GET /api/language`, `language.list`, and the architecture document now say
   3.11. The image itself is unchanged.
