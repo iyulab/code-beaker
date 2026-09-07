@@ -22,13 +22,45 @@ in minor releases, and this file is where a consumer finds out about them.
   forward to the latest feature band), so a local build no longer depends on
   whichever SDK happens to be installed.
 
+- **JSON-RPC: `language.list` items now carry `displayName`, `version`,
+  `aliases`, and `dockerImage` instead of `runtime`.** The old `runtime` value
+  was the .NET class name of an internal metadata holder (`PythonRuntime`),
+  which told a client nothing; the response is now the same shape the REST
+  `GET /api/language` endpoint returns.
+
+### Added
+
+- **`LanguageCatalog` (`CodeBeaker.Runtimes`) and `LanguageDescriptor`
+  (`CodeBeaker.Core.Models`)** — the single source of supported languages:
+  canonical name, aliases, display name, sandbox image version, and Docker
+  image. `LanguageCatalog.Resolve`/`TryResolve`/`IsSupported` accept a name or
+  alias case-insensitively; `IsSupported` takes `string?` and answers `false`
+  for `null`.
+- **Aliases are honored everywhere, not only by the language endpoints.** A
+  Docker session can now be created with `py`, `python3`, `js`, or `node`
+  as well as the canonical names; previously the language endpoints advertised
+  aliases the Docker runtime then rejected.
+
 ### Removed
 
+- **`IRuntime`, `BaseRuntime`, `PythonRuntime`, `JavaScriptRuntime`,
+  `GoRuntime`, `CSharpRuntime` (root `CodeBeaker.Runtimes` namespace), and
+  `RuntimeRegistry`.** They held only a language name and a Docker image but
+  were named as runtimes, so `CodeBeaker.Runtimes.PythonRuntime` collided with
+  the execution runtime `CodeBeaker.Runtimes.Python.PythonRuntime` — a consumer
+  writing `using CodeBeaker.Runtimes;` silently picked up the metadata class.
+  Use `LanguageCatalog` for what they carried; nothing about execution changes,
+  since `go` and `csharp` were always executed by `DockerRuntime` and
+  `NativeProcessRuntime`, never by the removed types.
 - **`Microsoft.AspNetCore.OpenApi` is no longer a dependency of the API
   server.** It was referenced but never called — the OpenAPI document and UI
   come from Swashbuckle — so it only added a package to resolve.
 
 ### Fixed
+
+- **The Python sandbox image was advertised as 3.12; it is `python:3.11-slim`.**
+  `GET /api/language`, `language.list`, and the architecture document now say
+  3.11. The image itself is unchanged.
 
 - **`Command` models deserialize again on System.Text.Json 9 and later.**
   `Command.Type` was mapped to the JSON property `"type"`, the same name the

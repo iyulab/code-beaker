@@ -21,7 +21,7 @@ public sealed class InitializeHandler : IJsonRpcHandler
                 supportsDebugging = false, // Future feature
                 supportsPortForwarding = false, // Future feature
                 supportsFileWatch = false, // Future feature
-                supportedLanguages = RuntimeRegistry.GetSupportedLanguages(),
+                supportedLanguages = LanguageCatalog.Names,
                 limits = new
                 {
                     maxTimeout = 300,

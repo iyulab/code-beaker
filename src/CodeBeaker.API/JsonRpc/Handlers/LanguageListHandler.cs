@@ -4,7 +4,8 @@ using CodeBeaker.Runtimes;
 namespace CodeBeaker.API.JsonRpc.Handlers;
 
 /// <summary>
-/// Handler for "language.list" JSON-RPC method
+/// Handler for "language.list" JSON-RPC method — the same catalog the REST
+/// <c>/api/language</c> endpoint serves, in the same shape.
 /// </summary>
 public sealed class LanguageListHandler : IJsonRpcHandler
 {
@@ -12,14 +13,15 @@ public sealed class LanguageListHandler : IJsonRpcHandler
 
     public Task<object?> HandleAsync(object? @params, CancellationToken cancellationToken = default)
     {
-        var languages = RuntimeRegistry.GetSupportedLanguages();
-
         var result = new
         {
-            languages = languages.Select(lang => new
+            languages = LanguageCatalog.All.Select(language => new
             {
-                name = lang,
-                runtime = RuntimeRegistry.Get(lang).GetType().Name
+                name = language.Name,
+                displayName = language.DisplayName,
+                version = language.Version,
+                aliases = language.Aliases,
+                dockerImage = language.DockerImage
             }).ToList()
         };
 

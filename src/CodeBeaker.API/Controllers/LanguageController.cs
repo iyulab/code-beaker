@@ -1,11 +1,12 @@
 using CodeBeaker.API.Models;
+using CodeBeaker.Core.Models;
 using CodeBeaker.Runtimes;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeBeaker.API.Controllers;
 
 /// <summary>
-/// 지원 언어 정보 API
+/// 지원 언어 정보 API — <see cref="LanguageCatalog"/>를 그대로 노출한다.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -28,52 +29,16 @@ public class LanguageController : ControllerBase
     [ProducesResponseType(typeof(List<LanguageInfo>), StatusCodes.Status200OK)]
     public ActionResult<List<LanguageInfo>> GetLanguages()
     {
-        var languages = new List<LanguageInfo>
-        {
-            new()
-            {
-                Name = "python",
-                DisplayName = "Python",
-                Version = "3.12",
-                Aliases = new List<string> { "python", "py" },
-                DockerImage = "codebeaker-python:latest"
-            },
-            new()
-            {
-                Name = "javascript",
-                DisplayName = "JavaScript (Node.js)",
-                Version = "20",
-                Aliases = new List<string> { "javascript", "js", "node" },
-                DockerImage = "codebeaker-nodejs:latest"
-            },
-            new()
-            {
-                Name = "go",
-                DisplayName = "Go",
-                Version = "1.21",
-                Aliases = new List<string> { "go", "golang" },
-                DockerImage = "codebeaker-golang:latest"
-            },
-            new()
-            {
-                Name = "csharp",
-                DisplayName = "C# (.NET)",
-                Version = "8.0",
-                Aliases = new List<string> { "csharp", "cs", "dotnet" },
-                DockerImage = "codebeaker-dotnet:latest"
-            }
-        };
-
         _logger.LogInformation("Languages list requested");
 
-        return Ok(languages);
+        return Ok(LanguageCatalog.All.Select(ToInfo).ToList());
     }
 
     /// <summary>
-    /// 특정 언어 지원 여부 확인
+    /// 특정 언어 지원 여부 확인. 이름과 별칭 모두 받는다.
     /// </summary>
-    /// <param name="name">언어 이름</param>
-    /// <returns>지원 여부</returns>
+    /// <param name="name">언어 이름 또는 별칭</param>
+    /// <returns>언어 정보</returns>
     /// <response code="200">언어 지원함</response>
     /// <response code="404">언어 지원하지 않음</response>
     [HttpGet("{name}")]
@@ -81,7 +46,7 @@ public class LanguageController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public ActionResult<LanguageInfo> GetLanguage(string name)
     {
-        if (!RuntimeRegistry.IsSupported(name))
+        if (!LanguageCatalog.TryResolve(name, out var language))
         {
             _logger.LogWarning("Language not supported: {Language}", name);
             return NotFound(new ErrorResponse
@@ -91,49 +56,17 @@ public class LanguageController : ControllerBase
             });
         }
 
-        // 정규화된 언어 이름으로 런타임 가져오기
-        var runtime = RuntimeRegistry.Get(name);
-        var languageName = runtime.LanguageName;
-
-        // 언어 정보 매핑
-        var languageMap = new Dictionary<string, LanguageInfo>
-        {
-            ["python"] = new()
-            {
-                Name = "python",
-                DisplayName = "Python",
-                Version = "3.12",
-                Aliases = new List<string> { "python", "py" },
-                DockerImage = "codebeaker-python:latest"
-            },
-            ["javascript"] = new()
-            {
-                Name = "javascript",
-                DisplayName = "JavaScript (Node.js)",
-                Version = "20",
-                Aliases = new List<string> { "javascript", "js", "node" },
-                DockerImage = "codebeaker-nodejs:latest"
-            },
-            ["go"] = new()
-            {
-                Name = "go",
-                DisplayName = "Go",
-                Version = "1.21",
-                Aliases = new List<string> { "go", "golang" },
-                DockerImage = "codebeaker-golang:latest"
-            },
-            ["csharp"] = new()
-            {
-                Name = "csharp",
-                DisplayName = "C# (.NET)",
-                Version = "8.0",
-                Aliases = new List<string> { "csharp", "cs", "dotnet" },
-                DockerImage = "codebeaker-dotnet:latest"
-            }
-        };
-
         _logger.LogInformation("Language info requested: {Language}", name);
 
-        return Ok(languageMap[languageName]);
+        return Ok(ToInfo(language));
     }
+
+    private static LanguageInfo ToInfo(LanguageDescriptor language) => new()
+    {
+        Name = language.Name,
+        DisplayName = language.DisplayName,
+        Version = language.Version,
+        Aliases = language.Aliases.ToList(),
+        DockerImage = language.DockerImage
+    };
 }

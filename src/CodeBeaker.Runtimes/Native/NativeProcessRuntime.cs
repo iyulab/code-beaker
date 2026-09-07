@@ -26,8 +26,8 @@ public sealed class NativeProcessRuntime : IExecutionRuntime
 
     /// <summary>
     /// Environments not already served by a dedicated runtime here (Deno/Bun/Node/Python) —
-    /// mirrors <c>RuntimeRegistry</c>'s existing "csharp"/"cs"/"dotnet",
-    /// "go"/"golang" naming so callers already familiar with that registry recognize these.
+    /// uses the same "csharp"/"cs"/"dotnet", "go"/"golang" names as <c>LanguageCatalog</c>
+    /// so a caller can pass either the canonical name or an alias.
     /// </summary>
     public string[] SupportedEnvironments =>
         ["dotnet", "csharp", "cs", "go", "golang", "java", "rust", "native"];

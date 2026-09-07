@@ -32,16 +32,11 @@ public sealed class DockerRuntime : IExecutionRuntime, IReconnectableRuntime
 
     public RuntimeType Type => RuntimeType.Docker;
 
-    public string[] SupportedEnvironments => new[]
-    {
-        "python",
-        "javascript",
-        "nodejs",
-        "go",
-        "golang",
-        "csharp",
-        "dotnet"
-    };
+    /// <summary>
+    /// Docker 런타임은 <see cref="LanguageCatalog"/>에 이미지가 등록된 언어를 전부 받는다 —
+    /// 정규 이름과 별칭 모두.
+    /// </summary>
+    public string[] SupportedEnvironments => LanguageCatalog.AllNames.ToArray();
 
     public async Task<bool> IsAvailableAsync(CancellationToken cancellationToken = default)
     {
@@ -610,14 +605,12 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
 
     private static string GetDefaultImage(string environment)
     {
-        var image = environment.ToLowerInvariant() switch
+        if (!LanguageCatalog.TryResolve(environment, out var language))
         {
-            "python" => "codebeaker-python:latest",
-            "javascript" or "js" or "nodejs" => "codebeaker-nodejs:latest",
-            "go" or "golang" => "codebeaker-golang:latest",
-            "csharp" or "cs" or "dotnet" => "codebeaker-dotnet:latest",
-            _ => throw new NotSupportedException($"Environment not supported: {environment}")
-        };
+            throw new NotSupportedException($"Environment not supported: {environment}");
+        }
+
+        var image = language.DockerImage;
 
         var registry = Environment.GetEnvironmentVariable(ImageRegistryEnvironmentVariable);
         return string.IsNullOrWhiteSpace(registry) ? image : $"{registry.TrimEnd('/')}/{image}";

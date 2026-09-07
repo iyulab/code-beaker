@@ -101,7 +101,7 @@ CodeBeaker는 **Multi-Runtime 지원 세션 기반 코드 실행 플랫폼**으�
 │  └──────────────────────────────────────────────────┘   │
 │                                                           │
 │  Runtime Images:                                         │
-│  - codebeaker-python:latest  (Python 3.12)              │
+│  - codebeaker-python:latest  (Python 3.11)              │
 │  - codebeaker-nodejs:latest  (Node.js 20)               │
 │  - codebeaker-golang:latest  (Go 1.21)                  │
 │  - codebeaker-dotnet:latest  (.NET 8)                   │
@@ -447,28 +447,29 @@ Session:
 
 **책임**: 언어별 실행 환경 제공
 
-실행 경로는 두 인터페이스로 나뉜다 — **언어 메타데이터**(`IRuntime`)와 **실행 환경의 수명주기**(`IExecutionRuntime` / `IExecutionEnvironment`). 세션 기반 실행이 유일한 실행 모델이며, `SessionManager`가 후자를 구동한다.
+실행 경로는 두 층으로 나뉜다 — **언어 메타데이터**(`LanguageCatalog`)와 **실행 환경의 수명주기**(`IExecutionRuntime` / `IExecutionEnvironment`). 세션 기반 실행이 유일한 실행 모델이며, `SessionManager`가 후자를 구동한다.
 
-#### IRuntime — 언어 메타데이터
+#### LanguageCatalog — 언어 메타데이터
 ```csharp
-public interface IRuntime
+public sealed record LanguageDescriptor(
+    string Name,                    // "python"
+    string DisplayName,             // "Python"
+    string Version,                 // 샌드박스 이미지가 제공하는 버전
+    IReadOnlyList<string> Aliases,  // ["python", "py", "python3"]
+    string DockerImage);            // "codebeaker-python:latest"
+
+public static class LanguageCatalog
 {
-    string LanguageName { get; }   // "python", "javascript", "go", "csharp"
-    string DockerImage { get; }    // "codebeaker-python:latest"
+    public static IReadOnlyList<LanguageDescriptor> All { get; }
+    public static IReadOnlyList<string> Names { get; }      // 정규 이름
+    public static IReadOnlyList<string> AllNames { get; }   // 정규 이름 + 별칭
+    public static bool TryResolve(string? nameOrAlias, out LanguageDescriptor language);
+    public static LanguageDescriptor Resolve(string nameOrAlias);
+    public static bool IsSupported(string? nameOrAlias);
 }
 ```
 
-`BaseRuntime`은 이 인터페이스의 추상 기반 클래스이고, 언어별 구현은 두 속성만 채운다. 실행 방법을 여기서 기술하지 않는다 — 명령 조립은 `CodeBeaker.Commands`가, 실행은 아래 실행 환경이 맡는다.
-
-```csharp
-public sealed class PythonRuntime : BaseRuntime
-{
-    public override string LanguageName => "python";
-    public override string DockerImage => "codebeaker-python:latest";
-}
-```
-
-`language.list` / `initialize` JSON-RPC 메서드는 이 메타데이터만 읽는다.
+지원 언어의 **단일 출처**다. 실행 방법을 여기서 기술하지 않는다 — 명령 조립은 `CodeBeaker.Commands`가, 실행은 아래 실행 환경이 맡는다. REST `/api/language`, JSON-RPC `language.list` / `initialize`, 그리고 `DockerRuntime`의 이미지 선택과 `SupportedEnvironments`가 전부 이 표를 읽으므로 언어를 추가하거나 별칭을 바꾸는 일은 이 표 한 곳에서 끝난다.
 
 #### IExecutionRuntime — 실행 환경 생성
 ```csharp
