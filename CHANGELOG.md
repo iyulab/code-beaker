@@ -21,7 +21,11 @@ in minor releases, and this file is where a consumer finds out about them.
 - **The repository pins its SDK with `global.json`** (`10.0.100`, rolling
   forward to the latest feature band), so a local build no longer depends on
   whichever SDK happens to be installed.
-
+- **JSON-RPC: `initialize` reports the version the server was actually built
+  as.** `protocolVersion` was the constant `"0.2.0"` and had not been touched
+  since the first commit, so it kept advertising the same value across two
+  releases that changed the wire shape. It is now derived from the assembly
+  version, which comes from the same `<Version>` the packages ship with.
 - **JSON-RPC: `language.list` items now carry `displayName`, `version`,
   `aliases`, and `dockerImage` instead of `runtime`.** The old `runtime` value
   was the .NET class name of an internal metadata holder (`PythonRuntime`),
@@ -68,7 +72,6 @@ in minor releases, and this file is where a consumer finds out about them.
   was unsigned. Counters the daemon omits now read as zero rather than
   throwing. `ResourceUsage.MemoryUsagePercent` and `CpuUsagePercent` are
   plain `double` values, as the type always declared.
-
 - **`Command` models deserialize again on System.Text.Json 9 and later.**
   `Command.Type` was mapped to the JSON property `"type"`, the same name the
   polymorphic type discriminator uses; newer System.Text.Json rejects that
