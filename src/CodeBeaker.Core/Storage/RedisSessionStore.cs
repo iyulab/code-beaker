@@ -120,8 +120,10 @@ public sealed class RedisSessionStore : ISessionStore, IAsyncDisposable
 
         while (stopwatch.Elapsed < timeout)
         {
-            // Redis SET NX (Set if Not eXists) 사용
-            var acquired = await _db.StringSetAsync(key, token, expiry, When.NotExists);
+            // Redis SET NX (Set if Not eXists) 사용. 조건은 ValueCondition 으로 준다 —
+            // 레거시 When 오버로드를 쓰면 저장 경로와 다른 메서드에 바인딩돼, 같은 명령을
+            // 두 개의 시그니처로 부르게 된다.
+            var acquired = await _db.StringSetAsync(key, token, expiry, ValueCondition.NotExists);
 
             if (acquired)
             {

@@ -40,37 +40,23 @@ public class SessionStoreContractTests
     private sealed class FakeRedis
     {
         public readonly Dictionary<string, string> Values = new();
-        public readonly Dictionary<string, TimeSpan?> Expiries = new();
+        public readonly Dictionary<string, Expiration> Expiries = new();
         public readonly IConnectionMultiplexer Multiplexer;
 
         public FakeRedis()
         {
             var db = new Mock<IDatabase>(MockBehavior.Strict);
 
+            // Both the save path and the lock path resolve to this one overload — the
+            // Expiration/ValueCondition shape. A strict mock is what keeps that true: if
+            // either call site drifts onto a legacy When/keepTtl overload, it fails here
+            // instead of silently answering `false`.
             db.Setup(d => d.StringSetAsync(
-                    It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(),
-                    It.IsAny<bool>(), It.IsAny<When>(), It.IsAny<CommandFlags>()))
-                .Returns((RedisKey k, RedisValue v, TimeSpan? e, bool _, When when, CommandFlags __) =>
+                    It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<Expiration>(),
+                    It.IsAny<ValueCondition>(), It.IsAny<CommandFlags>()))
+                .Returns((RedisKey k, RedisValue v, Expiration e, ValueCondition when, CommandFlags _) =>
                 {
-                    if (when == When.NotExists && Values.ContainsKey(k!))
-                    {
-                        return Task.FromResult(false);
-                    }
-
-                    Values[k!] = v!;
-                    Expiries[k!] = e;
-                    return Task.FromResult(true);
-                });
-
-            // The lock path calls the four-parameter overload (no CommandFlags), which
-            // is a different method than the one the save path resolves to — a strict
-            // mock is what makes that visible instead of silently answering `false`.
-            db.Setup(d => d.StringSetAsync(
-                    It.IsAny<RedisKey>(), It.IsAny<RedisValue>(), It.IsAny<TimeSpan?>(),
-                    It.IsAny<When>()))
-                .Returns((RedisKey k, RedisValue v, TimeSpan? e, When when) =>
-                {
-                    if (when == When.NotExists && Values.ContainsKey(k!))
+                    if (when.Equals(ValueCondition.NotExists) && Values.ContainsKey(k!))
                     {
                         return Task.FromResult(false);
                     }
@@ -202,7 +188,7 @@ public class SessionStoreContractTests
         Assert.Equal("codebeaker:session:prefixed", key);
 
         // Config: idle 30m, max lifetime 120m — the shorter one wins.
-        Assert.Equal(TimeSpan.FromMinutes(30), fake.Expiries[key]);
+        Assert.Equal((Expiration)TimeSpan.FromMinutes(30), fake.Expiries[key]);
     }
 
     [Fact]

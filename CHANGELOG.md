@@ -18,6 +18,29 @@ in minor releases, and this file is where a consumer finds out about them.
   their 10.x lines with it. A consumer on `net8.0` or `net9.0` can no longer
   reference `CodeBeaker.Core`, `CodeBeaker.Commands`, or `CodeBeaker.Runtimes`
   without retargeting; nothing else in the public API changes for this reason.
+- **The C# sandbox image moves to .NET 10** (`mcr.microsoft.com/dotnet/sdk:8.0`
+  → `sdk:10.0`), and the C# entry of `language.list` / `GET /api/language` now
+  reports `10.0` instead of `8.0`. This image is published for anyone to pull,
+  so leaving it on .NET 8 past November 2026 would mean shipping an unpatched
+  runtime. The image sets `DOTNET_ROLL_FORWARD=Major`, so user code targeting
+  an older generation (`net8.0`, `net9.0`) still launches on the 10.0 runtime
+  instead of failing to find its own — without that setting it does fail, which
+  was verified in the built image. Two consequences are worth knowing: a
+  sandbox runs with networking disabled unless the caller allows it, and only
+  the SDK's own generation restores offline — a project pinned to `net8.0`
+  needs network access to build, because its reference pack is not in the
+  image. The sandbox account is unchanged (`coderunner`, UID 1000): the
+  Ubuntu-based .NET 10 image ships a stock account at that UID, and the image
+  now removes it so the UID stays the same across all four runtime images and
+  matches the Helm `runAsUser`.
+- **`StackExchange.Redis` moves to its 3.x line** (`2.8.16` → `3.1.31`).
+  `CodeBeaker.Core` references it directly, so this is a dependency a consumer
+  resolves rather than an internal detail. The 3.0 client rewrote its IO layer
+  and speaks RESP3 by default, which requires a Redis server of version 6 or
+  newer; the public API it exposes is unchanged. `RedisSessionStore` behaves
+  the same — verified against a live Redis 7 server — but now calls the
+  `Expiration`/`ValueCondition` overload of `SET` rather than the legacy
+  `When`/`keepTtl` one, so its write and lock paths resolve to a single method.
 - **The repository pins its SDK with `global.json`** (`10.0.100`, rolling
   forward to the latest feature band), so a local build no longer depends on
   whichever SDK happens to be installed.

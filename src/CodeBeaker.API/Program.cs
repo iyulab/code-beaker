@@ -75,15 +75,12 @@ try
     var redisConnectionString = builder.Configuration.GetValue<string>("Redis:ConnectionString");
     if (!string.IsNullOrEmpty(redisConnectionString))
     {
-        // Redis 사용 (분산 환경)
+        // Redis 사용 (분산 환경). 연결은 세션 스토어가 소유한다 — 멀티플렉서를 따로
+        // 한 번 더 등록하면 아무도 주입받지 않는 두 번째 연결이 생길 뿐이다.
         builder.Services.AddSingleton<ISessionStore>(sp =>
         {
             var redis = StackExchange.Redis.ConnectionMultiplexer.Connect(redisConnectionString);
             return new RedisSessionStore(redis);
-        });
-        builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(sp =>
-        {
-            return StackExchange.Redis.ConnectionMultiplexer.Connect(redisConnectionString);
         });
     }
     else

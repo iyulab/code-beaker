@@ -21,7 +21,7 @@
 ## 📋 요구사항
 
 ### 필수
-- .NET 8.0 SDK
+- .NET 10.0 SDK
 - CodeBeaker API 실행 중 (`dotnet run --project src/CodeBeaker.API`)
 - OpenAI API 키 (.env 파일)
 

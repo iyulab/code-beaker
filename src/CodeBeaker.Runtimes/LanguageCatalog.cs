@@ -16,7 +16,7 @@ public static class LanguageCatalog
         new("python", "Python", "3.11", ["python", "py", "python3"], "codebeaker-python:latest"),
         new("javascript", "JavaScript (Node.js)", "20", ["javascript", "js", "node", "nodejs"], "codebeaker-nodejs:latest"),
         new("go", "Go", "1.21", ["go", "golang"], "codebeaker-golang:latest"),
-        new("csharp", "C# (.NET)", "8.0", ["csharp", "cs", "dotnet"], "codebeaker-dotnet:latest"),
+        new("csharp", "C# (.NET)", "10.0", ["csharp", "cs", "dotnet"], "codebeaker-dotnet:latest"),
     ];
 
     private static readonly Dictionary<string, LanguageDescriptor> _byAlias = BuildIndex();

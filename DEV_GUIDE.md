@@ -20,9 +20,9 @@
 
 ### 필수 소프트웨어
 
-1. **.NET 8.0 SDK**
-   - 다운로드: https://dotnet.microsoft.com/download/dotnet/8.0
-   - 확인: `dotnet --version` (8.0.x 이상)
+1. **.NET 10.0 SDK**
+   - 다운로드: https://dotnet.microsoft.com/download/dotnet/10.0
+   - 확인: `dotnet --version` — `global.json`이 `10.0.100`을 최신 feature band 까지 열어 두고 고정한다
 
 2. **Docker Desktop**
    - Windows: https://docs.docker.com/desktop/install/windows-install/
