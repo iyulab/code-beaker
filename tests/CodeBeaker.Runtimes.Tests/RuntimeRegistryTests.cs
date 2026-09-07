@@ -106,7 +106,6 @@ public sealed class RuntimeRegistryTests
     [InlineData("javascript", true)]
     [InlineData("ruby", false)]
     [InlineData("", false)]
-    [InlineData(null, false)]
     public void IsSupported_ChecksLanguageSupport(string language, bool expected)
     {
         // Act
@@ -114,5 +113,16 @@ public sealed class RuntimeRegistryTests
 
         // Assert
         result.Should().Be(expected);
+    }
+
+    [Fact]
+    public void IsSupported_ReturnsFalseForNull()
+    {
+        // Act — the parameter is declared non-nullable, so this covers the
+        // defensive path a caller without nullable annotations can still hit.
+        var result = RuntimeRegistry.IsSupported(null!);
+
+        // Assert
+        result.Should().BeFalse();
     }
 }
