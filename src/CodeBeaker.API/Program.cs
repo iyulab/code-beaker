@@ -108,6 +108,13 @@ try
     // Background services
     builder.Services.AddHostedService<SessionCleanupWorker>();
 
+    // Enforces SessionConfig.MemoryLimitMB for runtimes the host kernel does not
+    // police on its own: it samples each live session and closes one that exceeds
+    // its hard memory limit. Without this registration the limit is only observed,
+    // never acted on — outside Docker, where the limit also reaches the daemon as
+    // a cgroup constraint.
+    builder.Services.AddHostedService<CodeBeaker.Core.Monitoring.ResourceMonitoringService>();
+
     // The Docker-facing hosted services take the interface so they stay testable;
     // the concrete client above is the single shared instance behind it.
     builder.Services.AddSingleton<Docker.DotNet.IDockerClient>(sp =>

@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>iyulab</Authors>
     <Description>Command and result models for CodeBeaker's multi-runtime code execution platform.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

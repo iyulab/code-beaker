@@ -8,7 +8,7 @@ CodeBeaker is in its `0.x` line: the public contract is not frozen yet, and a
 better design is adopted rather than deferred. Breaking changes therefore appear
 in minor releases, and this file is where a consumer finds out about them.
 
-## [Unreleased]
+## [0.2.0]
 
 ### Removed
 
@@ -40,9 +40,15 @@ in minor releases, and this file is where a consumer finds out about them.
   `SecurityConfig.SandboxDisableNetwork`, which defaults to `false` — a session
   created without an explicit security configuration reaches the network. Set
   `SandboxDisableNetwork = true` to keep a container off the network.
-- **A session that exceeds its configured memory limit is now terminated**
-  rather than only logged. `SessionConfig.MemoryLimitMB` previously enforced
-  nothing.
+- **A session that exceeds its configured memory limit is now terminated.**
+  The API host registers the resource monitor that enforces
+  `SessionConfig.MemoryLimitMB`: it samples live sessions and closes one that
+  goes over its hard limit. Docker sessions already carried that limit as a
+  container-level constraint the daemon enforced, so the change is visible on
+  the runtimes the kernel does not police — and the monitor closes the session
+  rather than leaving a dead environment behind. A consumer that hosts the
+  library itself gets the same behavior by registering
+  `ResourceMonitoringService`, which nothing did before.
 - **`DockerCleanupService` is a `BackgroundService`**, not a one-shot
   `IHostedService`, and its constructor takes `IDockerClient` rather than the
   sealed `DockerClient`.
