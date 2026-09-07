@@ -33,6 +33,35 @@ updates:
       - dependency-name: "Microsoft.NET.Test.Sdk"
       - dependency-name: "coverlet.collector"
 
+  # The sandbox runtime images are published for anyone to pull, so the language
+  # generation each one is built from is a shipped artifact rather than a local
+  # build detail. Nothing was watching them, and a base image can sit years past
+  # end of life with nothing in the repository reporting it. The catalog-sync tests
+  # keep the four restatements of a generation consistent with each other, but four
+  # consistent restatements of an unsupported generation still pass — noticing that
+  # the generation itself has aged is what this watches for.
+  #
+  # `directories` globs, so a runtime image added later is watched without anyone
+  # remembering to list it here; `docker/runtimes/*` is exactly the set of image
+  # definitions, which `EveryRuntimeImageDirectory_IsCoveredByTheCatalog` asserts.
+  # The images are deliberately left ungrouped and major bumps are not ignored: a
+  # generation change is what alters the sandbox user code runs in, so each one is
+  # its own decision and belongs in its own pull request.
+  #
+  # Expect these pull requests to arrive red: an update edits the `FROM` line and
+  # nothing else, which is exactly what the catalog-sync tests fail on. That is the
+  # guard working — the fix is to move `LanguageCatalog`'s version with the image in
+  # the same pull request, never to relax the test.
+  - package-ecosystem: "docker"
+    directories:
+      - "/docker/runtimes/*"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(docker)"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
