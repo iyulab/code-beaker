@@ -61,6 +61,13 @@ in minor releases, and this file is where a consumer finds out about them.
 - **The Python sandbox image was advertised as 3.12; it is `python:3.11-slim`.**
   `GET /api/language`, `language.list`, and the architecture document now say
   3.11. The image itself is unchanged.
+- **Docker resource usage is read through the supported stats API and no
+  longer reports impossible CPU figures.** Usage was parsed by hand out of a
+  raw stream, and a CPU counter that went backwards between two samples
+  produced an enormous positive delta instead of zero, because the subtraction
+  was unsigned. Counters the daemon omits now read as zero rather than
+  throwing. `ResourceUsage.MemoryUsagePercent` and `CpuUsagePercent` are
+  plain `double` values, as the type always declared.
 
 - **`Command` models deserialize again on System.Text.Json 9 and later.**
   `Command.Type` was mapped to the JSON property `"type"`, the same name the
