@@ -3,6 +3,7 @@ name: CI Pipeline
 on:
   push:
     branches: [ main, develop ]
+    tags: [ 'v*' ]   # branches만 두면 태그 push는 이 워크플로를 트리거하지 않는다 — 릴리스 잡(prepare-release·publish-*)의 전제
   pull_request:
     branches: [ main, develop ]
   workflow_dispatch:
@@ -384,3 +385,68 @@ jobs:
         tags: |
           ghcr.io/${{ github.repository_owner }}/codebeaker-${{ matrix.name }}:latest
           ghcr.io/${{ github.repository_owner }}/codebeaker-${{ matrix.name }}:${{ github.ref_name }}
+
+  # Job 7: nuget.org 발행 (태그 푸시 시) — 인증은 nuget.org Trusted Publishing(GitHub OIDC → 1시간짜리 임시 API 키).
+  # 장기 API 키 시크릿을 두지 않는다. 1회 선행 조건(사람): nuget.org에 정책 등록(Repository Owner/Repository/Workflow File
+  # = 이 리포/ci.yml) + 리포 시크릿 NUGET_USER(nuget.org 프로필명). 절차 전체는 docs/RELEASING.md.
+  # 버전의 단일 출처는 각 csproj의 <Version>이다 — 태그는 트리거일 뿐이며 불일치하면 발행 전에 실패한다.
+  publish-nuget:
+    name: Publish NuGet Packages
+    runs-on: ubuntu-latest
+    needs: [build-and-test, integration-tests, code-quality, security-scan]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      id-token: write   # GitHub OIDC 토큰 발급 — NuGet/login이 임시 API 키로 교환한다
+      contents: read
+    env:
+      PACKABLE_PROJECTS: >-
+        src/CodeBeaker.Core/CodeBeaker.Core.csproj
+        src/CodeBeaker.Commands/CodeBeaker.Commands.csproj
+        src/CodeBeaker.Runtimes/CodeBeaker.Runtimes.csproj
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Assert tag matches every package <Version>
+      run: |
+        tag_version="${GITHUB_REF_NAME#v}"
+        status=0
+        for proj in $PACKABLE_PROJECTS; do
+          csproj_version=$(grep -o '<Version>[^<]*</Version>' "$proj" | sed -e 's/<Version>//' -e 's,</Version>,,')
+          if [ -z "$csproj_version" ]; then
+            echo "::error file=$proj::no <Version> element found - every packable project must declare one."
+            status=1
+          elif [ "$csproj_version" != "$tag_version" ]; then
+            echo "::error file=$proj::<Version> is '$csproj_version' but the tag is 'v$tag_version' - bump the csproj (and CHANGELOG) before tagging."
+            status=1
+          else
+            echo "$proj: $csproj_version == v$tag_version"
+          fi
+        done
+        exit $status
+
+    - name: Pack
+      run: |
+        for proj in $PACKABLE_PROJECTS; do
+          dotnet pack "$proj" --configuration Release -p:ContinuousIntegrationBuild=true --output ./artifacts/nuget
+        done
+        ls -l ./artifacts/nuget
+
+    # 임시 키는 1시간 유효 — push 직전에 받는다.
+    - name: NuGet login (OIDC -> short-lived API key)
+      id: nuget-login
+      uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
+      with:
+        user: ${{ secrets.NUGET_USER }}
+
+    - name: Push packages to nuget.org
+      env:
+        NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+      run: |
+        dotnet nuget push "./artifacts/nuget/*.nupkg" --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate

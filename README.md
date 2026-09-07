@@ -405,6 +405,7 @@ Integration tests can be run manually on GitHub Actions:
 - [사용자 가이드](docs/USAGE.md) - WebSocket API 사용법
 - [아키텍처](docs/ARCHITECTURE.md) - 시스템 설계
 - [변경 사항](CHANGELOG.md) - 릴리스별 변경 사항(깨는 변경 포함)
+- [릴리스 절차](docs/RELEASING.md) - 버전 상승 → 태그 push → nuget.org·GHCR·GitHub Release 자동 게시
 - [문서 인덱스](DOCUMENTATION_INDEX.md) - 전체 문서 목록
 
 ### API 문서

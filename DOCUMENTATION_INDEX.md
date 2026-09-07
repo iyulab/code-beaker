@@ -12,6 +12,7 @@
 ## 설계와 운영
 
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 시스템 설계
+- [docs/RELEASING.md](docs/RELEASING.md) — 릴리스 절차: 버전 상승 → 태그 push → nuget.org·GHCR·GitHub Release 자동 게시, Trusted Publishing 1회 설정
 - [k8s/README.md](k8s/README.md) — Kubernetes 배포 매니페스트
 
 ## 로드맵
