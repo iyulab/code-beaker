@@ -86,7 +86,7 @@ public class SessionStoreContractTests
                     It.IsAny<CommandFlags>()))
                 .Returns((string _, RedisKey[] keys, RedisValue[] values, CommandFlags __) =>
                 {
-                    var key = keys[0]!;
+                    var key = keys[0].ToString();
                     if (Values.TryGetValue(key, out var held) && held == values[0]!)
                     {
                         Values.Remove(key);

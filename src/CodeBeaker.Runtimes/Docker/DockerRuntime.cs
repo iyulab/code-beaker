@@ -98,7 +98,7 @@ public sealed class DockerRuntime : IExecutionRuntime, IReconnectableRuntime
                 return null;
             }
 
-            if (!container.State.Running)
+            if (container.State?.Running != true)
             {
                 // 멈춘 컨테이너는 되살릴 대상이 아니다. 여기서 걷어내지 않으면 호출자가
                 // 이 답을 받고 세션 기록을 지우는 순간(그것이 계약이다) 이 컨테이너를
@@ -274,7 +274,7 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
         {
             var container = await _docker.Containers.InspectContainerAsync(_containerId, cancellationToken);
 
-            if (container.State.Running)
+            if (container.State?.Running == true)
             {
                 return State; // 현재 상태 유지
             }
@@ -331,52 +331,42 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
 
         try
         {
-            // Docker stats API 호출 (stream = false로 단일 스냅샷만 요청)
-            // 참고: GetContainerStatsAsync는 Stream을 반환하므로 JSON 파싱 필요
-            using var statsStream = await _docker.Containers.GetContainerStatsAsync(
+            // stream=false 로 스냅샷 하나만 받는다. 라이브러리가 JSON을 풀어 IProgress로 넘겨주므로
+            // 직접 파싱하지 않는다.
+            var snapshot = new LatestStats();
+            await _docker.Containers.GetContainerStatsAsync(
                 _containerId,
                 new ContainerStatsParameters { Stream = false },
+                snapshot,
                 cancellationToken);
 
-            // Stream에서 JSON 읽기 및 역직렬화
-            using var reader = new StreamReader(statsStream);
-            var jsonContent = await reader.ReadToEndAsync();
-
-            if (string.IsNullOrWhiteSpace(jsonContent))
+            if (snapshot.Value is not { } stats)
             {
                 return new ResourceUsage(); // 빈 객체 반환
             }
 
-            var stats = System.Text.Json.JsonSerializer.Deserialize<ContainerStatsResponse>(
-                jsonContent,
-                new System.Text.Json.JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-
-            if (stats == null)
-            {
-                return new ResourceUsage(); // 빈 객체 반환
-            }
-
-            // Memory Usage 계산
-            var memoryUsage = stats.MemoryStats.Usage;
-            var memoryLimit = stats.MemoryStats.Limit;
+            // Memory
+            var memory = stats.MemoryStats;
+            var memoryUsage = memory?.Usage ?? 0;
+            var memoryLimit = memory?.Limit ?? 0;
             var memoryPercent = memoryLimit > 0 ? (double)memoryUsage / memoryLimit : 0;
 
-            // CPU Usage 계산
-            var cpuDelta = stats.CPUStats.CPUUsage.TotalUsage - stats.PreCPUStats.CPUUsage.TotalUsage;
-            var systemDelta = stats.CPUStats.SystemUsage - stats.PreCPUStats.SystemUsage;
-            var cpuCount = stats.CPUStats.OnlineCPUs > 0 ? stats.CPUStats.OnlineCPUs : 1;
+            // CPU — 이전 스냅샷 대비 델타. 카운터가 되감긴 경우(델타 음수)는 0으로 본다.
+            var cpu = stats.CPUStats;
+            var preCpu = stats.PreCPUStats;
+            var totalUsage = cpu?.CPUUsage.TotalUsage ?? 0;
+            var preTotalUsage = preCpu?.CPUUsage.TotalUsage ?? 0;
+            var systemUsage = cpu?.SystemUsage ?? 0;
+            var preSystemUsage = preCpu?.SystemUsage ?? 0;
+            var cpuDelta = totalUsage > preTotalUsage ? totalUsage - preTotalUsage : 0;
+            var systemDelta = systemUsage > preSystemUsage ? systemUsage - preSystemUsage : 0;
+            var cpuCount = cpu?.OnlineCPUs is > 0 and var online ? online : 1u;
             var cpuPercent = systemDelta > 0 ? (double)cpuDelta / systemDelta * cpuCount * 100.0 : 0;
 
             // Disk I/O
-            var diskRead = stats.BlkioStats.IoServiceBytesRecursive?
-                .Where(x => x.Op == "read")
-                .Sum(x => (long)x.Value) ?? 0;
-            var diskWrite = stats.BlkioStats.IoServiceBytesRecursive?
-                .Where(x => x.Op == "write")
-                .Sum(x => (long)x.Value) ?? 0;
+            var blkio = stats.BlkioStats?.IoServiceBytesRecursive;
+            var diskRead = blkio?.Where(x => x.Op == "read").Sum(x => (long)x.Value) ?? 0;
+            var diskWrite = blkio?.Where(x => x.Op == "write").Sum(x => (long)x.Value) ?? 0;
 
             // Network I/O
             var networkRx = stats.Networks?.Values.Sum(x => (long)x.RxBytes) ?? 0;
@@ -389,11 +379,11 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
             {
                 Timestamp = DateTime.UtcNow,
                 MemoryUsageBytes = (long)memoryUsage,
-                MemoryPeakBytes = (long)(stats.MemoryStats.MaxUsage),
-                MemoryUsagePercent = memoryPercent ?? 0,
-                CpuUsageNanoseconds = (long)stats.CPUStats.CPUUsage.TotalUsage,
-                CpuUsagePercent = cpuPercent ?? 0,
-                CpuThrottledMicroseconds = (long)(stats.CPUStats.ThrottlingData?.ThrottledTime ?? 0) / 1000,
+                MemoryPeakBytes = (long)(memory?.MaxUsage ?? 0),
+                MemoryUsagePercent = memoryPercent,
+                CpuUsageNanoseconds = (long)totalUsage,
+                CpuUsagePercent = cpuPercent,
+                CpuThrottledMicroseconds = (long)(cpu?.ThrottlingData?.ThrottledTime ?? 0) / 1000,
                 DiskReadBytes = diskRead,
                 DiskWriteBytes = diskWrite,
                 NetworkRxBytes = networkRx,
@@ -408,6 +398,18 @@ internal sealed class DockerEnvironment : IExecutionEnvironment, IResourceMonito
         {
             return new ResourceUsage(); // 빈 객체 반환
         }
+    }
+
+    /// <summary>
+    /// <c>stream=false</c> 호출이 넘겨주는 단 하나의 스냅샷을 동기적으로 받아 둔다.
+    /// <see cref="Progress{T}"/>는 콜백을 SynchronizationContext에 비동기로 올리므로
+    /// await가 끝난 뒤에도 값이 아직 없을 수 있다 — 그래서 직접 구현한다.
+    /// </summary>
+    private sealed class LatestStats : IProgress<ContainerStatsResponse>
+    {
+        public ContainerStatsResponse? Value { get; private set; }
+
+        public void Report(ContainerStatsResponse value) => Value = value;
     }
 
     /// <summary>

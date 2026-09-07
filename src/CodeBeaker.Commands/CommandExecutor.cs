@@ -232,7 +232,7 @@ public sealed class CommandExecutor : ICommandExecutor
             AttachStdout = true,
             AttachStderr = true,
             WorkingDir = command.WorkingDirectory ?? "/workspace",
-            Env = command.Environment?.Select(kv => $"{kv.Key}={kv.Value}").ToList()
+            Env = command.Environment?.Select(kv => $"{kv.Key}={kv.Value}").ToList() ?? []
         };
 
         var execResponse = await _docker.Exec.CreateContainerExecAsync(containerId, execConfig, cancellationToken);
