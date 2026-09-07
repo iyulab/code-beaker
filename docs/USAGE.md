@@ -202,7 +202,7 @@ asyncio.run(codebeaker_client())
   "params": {
     "sessionId": "abc123def456",
     "command": {
-      "type": "execute_shell",
+      "type": "shell",
       "commandName": "python3",
       "args": ["/workspace/hello.py"],
       "workingDirectory": "/workspace"
@@ -379,7 +379,7 @@ ws.onmessage = (event) => {
       params: {
         sessionId: sessionId,
         command: {
-          type: 'execute_shell',
+          type: 'shell',
           commandName: 'python3',
           args: ['/workspace/script.py']
         }
@@ -427,7 +427,7 @@ ws.onmessage = (event) => {
   "params": {
     "sessionId": "abc123",
     "command": {
-      "type": "execute_shell",
+      "type": "shell",
       "commandName": "node",
       "args": ["/workspace/app.js"]
     }
@@ -469,7 +469,7 @@ ws.onmessage = (event) => {
   "params": {
     "sessionId": "abc123",
     "command": {
-      "type": "execute_shell",
+      "type": "shell",
       "commandName": "go",
       "args": ["run", "/workspace/main.go"]
     }
@@ -511,7 +511,7 @@ ws.onmessage = (event) => {
   "params": {
     "sessionId": "abc123",
     "command": {
-      "type": "execute_shell",
+      "type": "shell",
       "commandName": "dotnet",
       "args": ["script", "/workspace/Program.cs"]
     }
@@ -754,7 +754,7 @@ for (let i = 0; i < 10; i++) {
 
 ```json
 {
-  "type": "execute_shell",
+  "type": "shell",
   "commandName": "python3",
   "args": ["/workspace/script.py"],
   "workingDirectory": "/workspace"
@@ -859,7 +859,7 @@ ws.send(JSON.stringify({
   params: {
     sessionId: sessionId,
     command: {
-      type: 'execute_shell',
+      type: 'shell',
       commandName: 'python3',
       args: ['/workspace/calc.py']
     }
@@ -887,7 +887,7 @@ ws.send(JSON.stringify({
   params: {
     sessionId: sessionId,
     command: {
-      type: 'execute_shell',
+      type: 'shell',
       commandName: 'pip',
       args: ['install', '--no-cache-dir', 'requests']
     }
@@ -917,7 +917,7 @@ ws.send(JSON.stringify({
   params: {
     sessionId: sessionId,
     command: {
-      type: 'execute_shell',
+      type: 'shell',
       commandName: 'python3',
       args: ['/workspace/api_test.py']
     }
@@ -974,7 +974,7 @@ ws.send(JSON.stringify({
   params: {
     sessionId: sessionId,
     command: {
-      type: 'execute_shell',
+      type: 'shell',
       commandName: 'python3',
       args: ['/workspace/process.py']
     }

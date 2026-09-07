@@ -8,6 +8,41 @@ CodeBeaker is in its `0.x` line: the public contract is not frozen yet, and a
 better design is adopted rather than deferred. Breaking changes therefore appear
 in minor releases, and this file is where a consumer finds out about them.
 
+## [0.3.0]
+
+### Changed
+
+- **All packages now target `net10.0`** (previously `net8.0`). .NET 8 leaves
+  support in November 2026, and the framework-following dependencies
+  (`Microsoft.Extensions.Hosting.Abstractions`, `Serilog.AspNetCore`) move to
+  their 10.x lines with it. A consumer on `net8.0` or `net9.0` can no longer
+  reference `CodeBeaker.Core`, `CodeBeaker.Commands`, or `CodeBeaker.Runtimes`
+  without retargeting; nothing else in the public API changes for this reason.
+- **The repository pins its SDK with `global.json`** (`10.0.100`, rolling
+  forward to the latest feature band), so a local build no longer depends on
+  whichever SDK happens to be installed.
+
+### Removed
+
+- **`Microsoft.AspNetCore.OpenApi` is no longer a dependency of the API
+  server.** It was referenced but never called — the OpenAPI document and UI
+  come from Swashbuckle — so it only added a package to resolve.
+
+### Fixed
+
+- **`Command` models deserialize again on System.Text.Json 9 and later.**
+  `Command.Type` was mapped to the JSON property `"type"`, the same name the
+  polymorphic type discriminator uses; newer System.Text.Json rejects that
+  model with "contains property 'type' that conflicts with an existing metadata
+  property name", which surfaced as an internal error on every
+  `session.execute`. The property is now excluded from serialization — the
+  discriminator alone carries `"type"` on the wire, so the JSON shape a client
+  sends and receives is unchanged. Serializing a command as its base type also
+  no longer writes `"type"` twice.
+- **`docs/USAGE.md` named the shell command type `execute_shell`.** The
+  discriminator has always been `shell`; the examples now match what the
+  server accepts.
+
 ## [0.2.0]
 
 ### Removed

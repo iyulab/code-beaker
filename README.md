@@ -3,7 +3,7 @@
 Multi-runtime code execution platform for .NET
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
 [![Docker](https://img.shields.io/badge/Docker-Runtime-2496ED)](https://www.docker.com/)
 [![Deno](https://img.shields.io/badge/Deno-Runtime-black)](https://deno.land/)
 [![Bun](https://img.shields.io/badge/Bun-Runtime-f9f1e1)](https://bun.sh/)
@@ -42,7 +42,7 @@ CodeBeaker는 다중 런타임을 지원하는 코드 실행 플랫폼입니다.
 
 ### 요구사항
 
-- .NET 8.0 SDK
+- .NET 10.0 SDK
 - Docker Desktop (선택사항, Docker 런타임 사용 시)
 - Node.js 18+ (선택사항, Node.js 런타임 사용 시)
 - Python 3.9+ (선택사항, Python 런타임 사용 시)

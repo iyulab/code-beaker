@@ -19,9 +19,12 @@ namespace CodeBeaker.Commands.Models;
 public abstract class Command
 {
     /// <summary>
-    /// Command type discriminator
+    /// Command type discriminator. The JSON "type" property is written and read
+    /// by the polymorphic metadata above; declaring it here as well would make
+    /// System.Text.Json reject the model, so the property is kept out of the
+    /// serialized shape.
     /// </summary>
-    [JsonPropertyName("type")]
+    [JsonIgnore]
     public abstract string Type { get; }
 
     /// <summary>

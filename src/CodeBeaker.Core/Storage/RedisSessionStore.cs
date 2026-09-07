@@ -60,7 +60,7 @@ public sealed class RedisSessionStore : ISessionStore, IAsyncDisposable
             return null;
         }
 
-        return JsonSerializer.Deserialize<SessionData>(json!, _jsonOptions);
+        return JsonSerializer.Deserialize<SessionData>(json.ToString(), _jsonOptions);
     }
 
     public async Task<bool> RemoveSessionAsync(string sessionId, CancellationToken cancellationToken = default)
@@ -80,7 +80,7 @@ public sealed class RedisSessionStore : ISessionStore, IAsyncDisposable
             var json = await _db.StringGetAsync(key);
             if (!json.IsNullOrEmpty)
             {
-                var session = JsonSerializer.Deserialize<SessionData>(json!, _jsonOptions);
+                var session = JsonSerializer.Deserialize<SessionData>(json.ToString(), _jsonOptions);
                 if (session != null)
                 {
                     sessions.Add(session);
