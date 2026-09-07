@@ -3,11 +3,12 @@ using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Runtimes.Bun;
 using CodeBeaker.Runtimes.Deno;
 using CodeBeaker.Runtimes.Node;
+using Xunit;
+
 // Aliased: the package also exposes a legacy CodeBeaker.Runtimes.PythonRuntime (a
 // language/image descriptor, unrelated to execution), and the unqualified name binds to
 // that one from inside this namespace.
 using PythonExecutionRuntime = CodeBeaker.Runtimes.Python.PythonRuntime;
-using Xunit;
 
 namespace CodeBeaker.Runtimes.Tests;
 
