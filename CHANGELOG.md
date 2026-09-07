@@ -33,6 +33,18 @@ in minor releases, and this file is where a consumer finds out about them.
   Ubuntu-based .NET 10 image ships a stock account at that UID, and the image
   now removes it so the UID stays the same across all four runtime images and
   matches the Helm `runAsUser`.
+- **The Python, Node.js, and Go sandbox images move to currently supported
+  generations** (`python:3.11-slim` → `3.13-slim`, `node:20-slim` → `24-slim`,
+  `golang:1.21-alpine` → `1.27-alpine`), and their entries in `language.list` /
+  `GET /api/language` now report `3.13`, `24`, and `1.27` instead of `3.11`, `20`,
+  and `1.21`. Node 20 and Go 1.21 had both passed end of life, and these images are
+  published for anyone to pull, so the reasoning that moved the C# image applies to
+  them as well. Unlike .NET, none of the three offers a roll-forward switch: user
+  code that depends on a standard-library module removed since Python 3.11, on a
+  native add-on built against the Node 20 ABI, or on a Go toolchain older than the
+  image now provides has to move with it. Each image was rebuilt and exercised with
+  networking disabled to confirm that the sandbox account still holds UID 1000 and
+  that user code still runs offline.
 - **`StackExchange.Redis` moves to its 3.x line** (`2.8.16` → `3.1.31`).
   `CodeBeaker.Core` references it directly, so this is a dependency a consumer
   resolves rather than an internal detail. The 3.0 client rewrote its IO layer

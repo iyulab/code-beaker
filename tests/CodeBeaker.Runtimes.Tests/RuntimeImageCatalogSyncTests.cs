@@ -131,7 +131,7 @@ public sealed class RuntimeImageCatalogSyncTests
         ImageDirectories.Single(e => e.Language == language).Directory;
 
     /// <summary>
-    /// The tag's leading component: <c>3.11-slim</c> → <c>3.11</c>, <c>10.0</c> →
+    /// The tag's leading component: <c>3.13-slim</c> → <c>3.13</c>, <c>10.0</c> →
     /// <c>10.0</c>. Everything after the first dash names a base-OS variant, not a
     /// language generation.
     /// </summary>

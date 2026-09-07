@@ -1,5 +1,5 @@
 # Python 런타임 Docker 이미지
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # 보안: 비root 사용자 생성
 RUN useradd -m -u 1000 -s /bin/bash coderunner

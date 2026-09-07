@@ -101,9 +101,9 @@ CodeBeaker는 **Multi-Runtime 지원 세션 기반 코드 실행 플랫폼**으�
 │  └──────────────────────────────────────────────────┘   │
 │                                                           │
 │  Runtime Images:                                         │
-│  - codebeaker-python:latest  (Python 3.11)              │
-│  - codebeaker-nodejs:latest  (Node.js 20)               │
-│  - codebeaker-golang:latest  (Go 1.21)                  │
+│  - codebeaker-python:latest  (Python 3.13)              │
+│  - codebeaker-nodejs:latest  (Node.js 24)               │
+│  - codebeaker-golang:latest  (Go 1.27)                  │
 │  - codebeaker-dotnet:latest  (.NET 10)                  │
 └─────────────────────────────────────────────────────────┘
 ```

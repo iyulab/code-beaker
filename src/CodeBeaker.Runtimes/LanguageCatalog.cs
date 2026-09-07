@@ -13,9 +13,9 @@ public static class LanguageCatalog
     /// </summary>
     public static IReadOnlyList<LanguageDescriptor> All { get; } =
     [
-        new("python", "Python", "3.11", ["python", "py", "python3"], "codebeaker-python:latest"),
-        new("javascript", "JavaScript (Node.js)", "20", ["javascript", "js", "node", "nodejs"], "codebeaker-nodejs:latest"),
-        new("go", "Go", "1.21", ["go", "golang"], "codebeaker-golang:latest"),
+        new("python", "Python", "3.13", ["python", "py", "python3"], "codebeaker-python:latest"),
+        new("javascript", "JavaScript (Node.js)", "24", ["javascript", "js", "node", "nodejs"], "codebeaker-nodejs:latest"),
+        new("go", "Go", "1.27", ["go", "golang"], "codebeaker-golang:latest"),
         new("csharp", "C# (.NET)", "10.0", ["csharp", "cs", "dotnet"], "codebeaker-dotnet:latest"),
     ];
 
