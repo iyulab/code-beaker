@@ -16,24 +16,12 @@ namespace CodeBeaker.Runtimes.Tests;
 /// These tests read the Dockerfiles and the workflow themselves, so the restatements
 /// cannot drift silently. No Docker daemon is involved — nothing is built here, which
 /// is what keeps the guard running everywhere rather than skipping where Docker is absent.
+///
+/// Whether a pinned generation is still supported upstream is a different question,
+/// answered by <see cref="RuntimeImageSupportWindowTests"/>.
 /// </summary>
 public sealed class RuntimeImageCatalogSyncTests
 {
-    /// <summary>
-    /// Canonical language name → the directory under <c>docker/runtimes</c> that
-    /// builds its image. The two differ (<c>csharp</c> builds
-    /// <c>codebeaker-dotnet</c>), so the mapping cannot be derived from either name.
-    /// <see cref="EveryRuntimeImageDirectory_IsCoveredByTheCatalog"/> and
-    /// <see cref="EveryCatalogLanguage_IsMapped"/> are what keep this table honest.
-    /// </summary>
-    private static readonly (string Language, string Directory)[] ImageDirectories =
-    [
-        ("python", "python"),
-        ("javascript", "nodejs"),
-        ("go", "golang"),
-        ("csharp", "csharp"),
-    ];
-
     [Theory]
     [InlineData("python")]
     [InlineData("javascript")]
@@ -41,10 +29,10 @@ public sealed class RuntimeImageCatalogSyncTests
     [InlineData("csharp")]
     public void CatalogVersion_MatchesTheGenerationItsDockerfileBuildsFrom(string language)
     {
-        var directory = DirectoryFor(language);
-        var baseImage = ReadBaseImage(directory);
+        var directory = RuntimeImageFiles.DirectoryFor(language);
+        var baseImage = RuntimeImageFiles.ReadBaseImage(directory);
 
-        GenerationOf(baseImage).Should().Be(
+        RuntimeImageFiles.GenerationOf(baseImage).Should().Be(
             LanguageCatalog.Resolve(language).Version,
             "the catalog reports this value to clients as the language version, so it has to be "
             + "the generation '{0}/Dockerfile' actually builds from ({1})", directory, baseImage);
@@ -69,7 +57,7 @@ public sealed class RuntimeImageCatalogSyncTests
     public void CatalogImage_IsBuiltAndPublishedFromItsOwnDirectory(string language)
     {
         var image = LanguageCatalog.Resolve(language).DockerImage;
-        var path = $"docker/runtimes/{DirectoryFor(language)}";
+        var path = $"docker/runtimes/{RuntimeImageFiles.DirectoryFor(language)}";
 
         // `codebeaker-dotnet:latest` → `dotnet`; the publish job assembles the pushed
         // tag as `ghcr.io/<owner>/codebeaker-${{ matrix.name }}`.
@@ -87,15 +75,15 @@ public sealed class RuntimeImageCatalogSyncTests
 
     /// <summary>CI build steps — a <c>context:</c> line followed by its <c>tags:</c> line.</summary>
     private static IReadOnlyList<(string Path, string Image)> BuildStepPairs() =>
-        Pairs(ReadWorkflow("ci.yml"), @"context:\s*(?<a>\S+)\s*\r?\n\s*tags:\s*(?<b>\S+)");
+        Pairs(RuntimeImageFiles.ReadWorkflow("ci.yml"), @"context:\s*(?<a>\S+)\s*\r?\n\s*tags:\s*(?<b>\S+)");
 
     /// <summary>The tag-push job's matrix — a <c>- name:</c> line followed by its <c>path:</c> line.</summary>
     private static IReadOnlyList<(string Name, string Path)> PublishMatrixPairs() =>
-        Pairs(ReadWorkflow("ci.yml"), @"-\s*name:\s*(?<a>\S+)\s*\r?\n\s*path:\s*(?<b>\S+)");
+        Pairs(RuntimeImageFiles.ReadWorkflow("ci.yml"), @"-\s*name:\s*(?<a>\S+)\s*\r?\n\s*path:\s*(?<b>\S+)");
 
     /// <summary>The integration workflow — <c>docker build -t &lt;image&gt; &lt;path&gt;</c>.</summary>
     private static IReadOnlyList<(string Image, string Path)> IntegrationWorkflowPairs() =>
-        Pairs(ReadWorkflow("integration-tests.yml"), @"docker build -t (?<a>\S+) (?<b>\S+)");
+        Pairs(RuntimeImageFiles.ReadWorkflow("integration-tests.yml"), @"docker build -t (?<a>\S+) (?<b>\S+)");
 
     private static IReadOnlyList<(string, string)> Pairs(string workflow, string pattern)
     {
@@ -112,68 +100,18 @@ public sealed class RuntimeImageCatalogSyncTests
     public void EveryRuntimeImageDirectory_IsCoveredByTheCatalog()
     {
         var onDisk = Directory
-            .EnumerateDirectories(Path.Combine(RepositoryRoot().FullName, "docker", "runtimes"))
+            .EnumerateDirectories(Path.Combine(RuntimeImageFiles.RepositoryRoot().FullName, "docker", "runtimes"))
             .Select(d => Path.GetFileName(d)!);
 
         onDisk.Should().BeEquivalentTo(
-            ImageDirectories.Select(e => e.Directory),
+            RuntimeImageFiles.Directories.Select(e => e.Directory),
             "a runtime image nobody maps to a language would never be version-checked");
     }
 
     [Fact]
     public void EveryCatalogLanguage_IsMapped()
     {
-        ImageDirectories.Select(e => e.Language)
+        RuntimeImageFiles.Directories.Select(e => e.Language)
             .Should().BeEquivalentTo(LanguageCatalog.Names);
-    }
-
-    private static string DirectoryFor(string language) =>
-        ImageDirectories.Single(e => e.Language == language).Directory;
-
-    /// <summary>
-    /// The tag's leading component: <c>3.13-slim</c> → <c>3.13</c>, <c>10.0</c> →
-    /// <c>10.0</c>. Everything after the first dash names a base-OS variant, not a
-    /// language generation.
-    /// </summary>
-    private static string GenerationOf(string baseImage)
-    {
-        var tag = baseImage[(baseImage.LastIndexOf(':') + 1)..];
-        return tag.Split('-')[0];
-    }
-
-    private static string ReadBaseImage(string directory)
-    {
-        var dockerfile = Path.Combine(RepositoryRoot().FullName, "docker", "runtimes", directory, "Dockerfile");
-        File.Exists(dockerfile).Should().BeTrue("'{0}' is the image definition under test", dockerfile);
-
-        var from = File.ReadLines(dockerfile)
-            .FirstOrDefault(l => l.StartsWith("FROM ", StringComparison.Ordinal));
-
-        from.Should().NotBeNull("'{0}' has to declare a base image", dockerfile);
-
-        // `FROM <image>` — a build stage alias (`AS build`) would follow the image.
-        return from!.Split(' ', StringSplitOptions.RemoveEmptyEntries)[1];
-    }
-
-    private static string ReadWorkflow(string name) =>
-        File.ReadAllText(Path.Combine(RepositoryRoot().FullName, ".github", "workflows", name));
-
-    /// <summary>
-    /// Walks up from the test binaries until the directory holding the runtime image
-    /// definitions appears. Resolving from <see cref="AppContext.BaseDirectory"/> keeps
-    /// this working wherever the suite runs from, unlike a path relative to the caller.
-    /// </summary>
-    private static DirectoryInfo RepositoryRoot()
-    {
-        for (var dir = new DirectoryInfo(AppContext.BaseDirectory); dir is not null; dir = dir.Parent)
-        {
-            if (Directory.Exists(Path.Combine(dir.FullName, "docker", "runtimes")))
-            {
-                return dir;
-            }
-        }
-
-        throw new InvalidOperationException(
-            $"No ancestor of '{AppContext.BaseDirectory}' contains 'docker/runtimes'.");
     }
 }
