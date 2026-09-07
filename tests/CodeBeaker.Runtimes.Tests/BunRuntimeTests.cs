@@ -44,19 +44,11 @@ public sealed class BunRuntimeTests
         Assert.True(capabilities.SupportsNetworkAccess);
     }
 
-    [Fact(Skip = "Bun 설치 필요 - 선택적 런타임")]
-    public async Task IsAvailableAsync_ShouldReturnTrue_WhenBunInstalled()
-    {
-        // Act
-        var isAvailable = await _runtime.IsAvailableAsync();
-
-        // Assert
-        Assert.True(isAvailable);
-    }
-
-    [Fact(Skip = "Bun 설치 필요 - 선택적 런타임")]
+    [SkippableFact]
     public async Task CreateEnvironmentAsync_ShouldCreateEnvironment()
     {
+        Skip.IfNot(await _runtime.IsAvailableAsync(), "Bun is not installed.");
+
         // Arrange
         var config = new RuntimeConfig
         {
@@ -93,9 +85,11 @@ public sealed class BunRuntimeTests
         }
     }
 
-    [Fact(Skip = "Bun 설치 필요 - 선택적 런타임")]
+    [SkippableFact]
     public async Task ExecuteCodeCommand_ShouldRunJavaScript()
     {
+        Skip.IfNot(await _runtime.IsAvailableAsync(), "Bun is not installed.");
+
         // Arrange
         var config = new RuntimeConfig
         {
@@ -134,9 +128,11 @@ public sealed class BunRuntimeTests
         }
     }
 
-    [Fact(Skip = "Bun 설치 필요 - 선택적 런타임")]
+    [SkippableFact]
     public async Task ExecuteCodeCommand_ShouldRunTypeScript()
     {
+        Skip.IfNot(await _runtime.IsAvailableAsync(), "Bun is not installed.");
+
         // Arrange
         var config = new RuntimeConfig
         {
@@ -175,9 +171,11 @@ public sealed class BunRuntimeTests
         }
     }
 
-    [Fact(Skip = "Bun 설치 필요 - 선택적 런타임")]
+    [SkippableFact]
     public async Task WriteAndReadFile_ShouldMaintainFilesystemState()
     {
+        Skip.IfNot(await _runtime.IsAvailableAsync(), "Bun is not installed.");
+
         // Arrange
         var config = new RuntimeConfig
         {

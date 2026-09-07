@@ -434,10 +434,12 @@ public sealed class PythonEnvironment : IExecutionEnvironment, IResourceMonitor
         {
             _currentProcess = new Process
             {
-                StartInfo = new ProcessStartInfo
+                // ArgumentList, not Arguments: a joined string is re-parsed on whitespace,
+                // so any single argument that contains a space (a shell script, a path with
+                // spaces) silently reaches the child as several arguments. ArgumentList
+                // escapes each element for the platform and passes them through intact.
+                StartInfo = new ProcessStartInfo(command.CommandName, command.Args)
                 {
-                    FileName = command.CommandName,
-                    Arguments = string.Join(" ", command.Args),
                     WorkingDirectory = _config.WorkspaceDirectory,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -508,16 +510,16 @@ public sealed class PythonEnvironment : IExecutionEnvironment, IResourceMonitor
                 if (File.Exists(requirementsPath))
                 {
                     args.Add("-r");
-                    args.Add($"\"{requirementsPath}\"");
+                    // Unquoted on purpose — ArgumentList escapes the path, and a pre-quoted
+                    // element would reach pip with the quotes still attached.
+                    args.Add(requirementsPath);
                 }
             }
 
             var process = new Process
             {
-                StartInfo = new ProcessStartInfo
+                StartInfo = new ProcessStartInfo(pipPath, args)
                 {
-                    FileName = pipPath,
-                    Arguments = string.Join(" ", args),
                     WorkingDirectory = _config.WorkspaceDirectory,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,

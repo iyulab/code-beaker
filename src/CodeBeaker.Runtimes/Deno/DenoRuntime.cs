@@ -485,10 +485,10 @@ public sealed class DenoEnvironment : IExecutionEnvironment
             arguments.AddRange(args);
         }
 
-        var startInfo = new ProcessStartInfo
+        // ArgumentList, not Arguments: a joined string is re-parsed on whitespace, so a script
+        // path or user argument containing a space would reach Deno as several arguments.
+        var startInfo = new ProcessStartInfo(_denoPath, arguments)
         {
-            FileName = _denoPath,
-            Arguments = string.Join(" ", arguments),
             WorkingDirectory = _config.WorkspaceDirectory,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -593,22 +593,17 @@ public sealed class DenoEnvironment : IExecutionEnvironment
                     processedArg = GetFullPath(arg);
                 }
 
-                // Quote arguments that contain spaces or special characters
-                if (processedArg.Contains(' ') || processedArg.Contains('"'))
-                {
-                    arguments.Add($"\"{processedArg.Replace("\"", "\\\"")}\"");
-                }
-                else
-                {
-                    arguments.Add(processedArg);
-                }
+                // No hand-rolled quoting here: the arguments go out through ArgumentList,
+                // which escapes each element for the platform.
+                arguments.Add(processedArg);
             }
         }
 
-        // Set arguments string
-        if (arguments.Count > 0)
+        // ArgumentList, not Arguments: a joined string is re-parsed on whitespace, so any single
+        // argument containing a space would silently reach the child as several arguments.
+        foreach (var argument in arguments)
         {
-            startInfo.Arguments = string.Join(" ", arguments);
+            startInfo.ArgumentList.Add(argument);
         }
 
         // Set environment variables from config

@@ -105,10 +105,12 @@ public sealed class NativeProcessEnvironment(RuntimeConfig config) : IExecutionE
         {
             _currentProcess = new Process
             {
-                StartInfo = new ProcessStartInfo
+                // ArgumentList, not Arguments: a joined string is re-parsed on whitespace,
+                // so any single argument that contains a space (a shell script, a path with
+                // spaces) silently reaches the child as several arguments. ArgumentList
+                // escapes each element for the platform and passes them through intact.
+                StartInfo = new ProcessStartInfo(command.CommandName, command.Args)
                 {
-                    FileName = command.CommandName,
-                    Arguments = string.Join(" ", command.Args),
                     WorkingDirectory = command.WorkingDirectory ?? config.WorkspaceDirectory,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,

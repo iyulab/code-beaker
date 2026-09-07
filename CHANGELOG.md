@@ -55,6 +55,19 @@ in minor releases, and this file is where a consumer finds out about them.
 
 ### Fixed
 
+- **The Bun runtime ran TypeScript as JavaScript.** It picked the temporary file's
+  extension by looking for `import`/`export` in the source rather than at the requested
+  language, so TypeScript that used neither was written as `.js` — and Bun, which decides
+  how to parse a file from its extension, then rejected the type annotations it had just
+  been asked to run. The extension now follows `ExecuteCodeCommand.Language`.
+- **Command arguments containing spaces were split into several arguments.**
+  Every process-spawning runtime joined its argument list into a single command
+  line, which is then re-parsed on whitespace, so one argument holding a script
+  or a path with spaces reached the child process as several. Through a POSIX
+  shell the result was a silent wrong answer rather than an error: `sh -c
+  <script>` ran only the fragment before the first space, produced no output and
+  still reported success. Arguments are now passed as a list and escaped for the
+  platform.
 - **Docker containers were never reclaimed and sessions could not be
   reconnected.** The session's environment identifier was a synthetic GUID the
   daemon knew nothing about, so session close silently failed to stop or remove

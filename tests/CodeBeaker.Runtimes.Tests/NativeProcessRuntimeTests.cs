@@ -161,6 +161,56 @@ public sealed class NativeProcessRuntimeTests
     }
 
     /// <summary>
+    /// Regression for arguments being joined into one command line and re-parsed on
+    /// whitespace: a single argument containing spaces then reached the child as several
+    /// arguments. A script handed to <c>sh -c</c> lost everything after its first space,
+    /// so the shell ran a fragment, exited 0 and produced no output — a silent wrong
+    /// answer rather than an error, which is the worst shape a defect can take here.
+    ///
+    /// POSIX-only on purpose, and for the mirror image of the reason the test below is
+    /// Windows-only: the Windows branch of these tests drives <c>cmd /c</c>, which takes
+    /// the remainder of the command line verbatim as one command string, so argv
+    /// separation is not observable through it. Asserting it there would claim coverage
+    /// the test does not have.
+    /// </summary>
+    [SkippableFact]
+    public async Task ExecuteShellCommand_WithAnArgumentContainingSpaces_KeepsItAsOneArgument()
+    {
+        Skip.If(OperatingSystem.IsWindows(), "Observes argv separation, which cmd /c does not expose.");
+
+        var workspace = Path.Combine(Path.GetTempPath(), $"native-test-{Guid.NewGuid():N}");
+        try
+        {
+            var environment = await _runtime.CreateEnvironmentAsync(new RuntimeConfig
+            {
+                Environment = "native",
+                WorkspaceDirectory = workspace,
+                ResourceLimits = new ResourceLimits { TimeoutSeconds = 15 },
+            });
+
+            // "$1" is the first argument after the one sh takes as $0, so the phrase comes
+            // back only if it survived as a single argv element.
+            var result = await environment.ExecuteAsync(new ExecuteShellCommand
+            {
+                CommandName = "sh",
+                Args = ["-c", "printf %s \"$1\"", "sh", "one two three"],
+            });
+
+            Assert.True(result.Success, result.Error);
+            Assert.Equal("one two three", result.Result);
+
+            await environment.DisposeAsync();
+        }
+        finally
+        {
+            if (Directory.Exists(workspace))
+            {
+                Directory.Delete(workspace, true);
+            }
+        }
+    }
+
+    /// <summary>
     /// Regression for a second, distinct hang in the same area: fixing the wait-before-read
     /// deadlock (above) only bounds the wait for the *immediate* process's exit. If that
     /// process launches a detached grandchild (e.g. Windows <c>start /b</c> starting a dev

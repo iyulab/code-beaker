@@ -254,8 +254,16 @@ public sealed class BunEnvironment : IExecutionEnvironment
     {
         var startTime = DateTime.UtcNow;
 
-        // 임시 파일에 코드 작성 (Bun은 TypeScript 네이티브 지원)
-        var extension = command.Code.Contains("import") || command.Code.Contains("export") ? ".ts" : ".js";
+        // Bun runs TypeScript natively, but it decides how to parse a file from that file's
+        // extension — so the extension has to follow the language the caller asked for. It
+        // used to be guessed from whether the source mentioned "import"/"export", which has
+        // nothing to do with the language: ordinary TypeScript without imports was written
+        // as .js and Bun then rejected the type annotations it had just been asked to run.
+        // Anything not explicitly JavaScript gets .ts, which Bun accepts for both.
+        var extension = command.Language.Equals("javascript", StringComparison.OrdinalIgnoreCase)
+            || command.Language.Equals("js", StringComparison.OrdinalIgnoreCase)
+                ? ".js"
+                : ".ts";
         var tempFile = Path.Combine(_config.WorkspaceDirectory, $"temp_{Guid.NewGuid():N}{extension}");
         await File.WriteAllTextAsync(tempFile, command.Code, cancellationToken);
 
@@ -468,10 +476,10 @@ public sealed class BunEnvironment : IExecutionEnvironment
             arguments.AddRange(args);
         }
 
-        var startInfo = new ProcessStartInfo
+        // ArgumentList, not Arguments: a joined string is re-parsed on whitespace, so a script
+        // path or user argument containing a space would reach Bun as several arguments.
+        var startInfo = new ProcessStartInfo(_bunPath, arguments)
         {
-            FileName = _bunPath,
-            Arguments = string.Join(" ", arguments),
             WorkingDirectory = _config.WorkspaceDirectory,
             RedirectStandardOutput = true,
             RedirectStandardError = true,

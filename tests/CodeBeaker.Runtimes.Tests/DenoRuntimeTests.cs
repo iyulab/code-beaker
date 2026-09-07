@@ -43,19 +43,11 @@ public sealed class DenoRuntimeTests
         Assert.True(capabilities.SupportsNetworkAccess);
     }
 
-    [Fact(Skip = "Deno 설치 경로를 찾을 수 없음 - 사용자 환경에서 Deno 경로 확인 필요")]
-    public async Task IsAvailableAsync_ShouldReturnTrue_WhenDenoInstalled()
-    {
-        // Act
-        var isAvailable = await _runtime.IsAvailableAsync();
-
-        // Assert
-        Assert.True(isAvailable);
-    }
-
-    [Fact(Skip = "Deno 설치 경로를 찾을 수 없음 - 사용자 환경에서 Deno 경로 확인 필요")]
+    [SkippableFact]
     public async Task CreateEnvironmentAsync_ShouldCreateEnvironment()
     {
+        Skip.IfNot(await _runtime.IsAvailableAsync(), "Deno is not installed.");
+
         // Arrange
         var config = new RuntimeConfig
         {
@@ -92,9 +84,11 @@ public sealed class DenoRuntimeTests
         }
     }
 
-    [Fact(Skip = "Deno 설치 경로를 찾을 수 없음 - 사용자 환경에서 Deno 경로 확인 필요")]
+    [SkippableFact]
     public async Task ExecuteCodeCommand_ShouldRunTypeScript()
     {
+        Skip.IfNot(await _runtime.IsAvailableAsync(), "Deno is not installed.");
+
         // Arrange
         var config = new RuntimeConfig
         {
@@ -133,9 +127,11 @@ public sealed class DenoRuntimeTests
         }
     }
 
-    [Fact(Skip = "Deno 설치 경로를 찾을 수 없음 - 사용자 환경에서 Deno 경로 확인 필요")]
+    [SkippableFact]
     public async Task WriteAndReadFile_ShouldMaintainFilesystemState()
     {
+        Skip.IfNot(await _runtime.IsAvailableAsync(), "Deno is not installed.");
+
         // Arrange
         var config = new RuntimeConfig
         {
