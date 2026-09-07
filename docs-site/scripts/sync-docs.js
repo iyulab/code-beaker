@@ -11,6 +11,10 @@ const ROOT_DIR = path.resolve(__dirname, '../..');
 const DOCS_SOURCE = path.join(ROOT_DIR, 'docs');
 const DOCS_TARGET = path.join(ROOT_DIR, 'docs-site/docs');
 
+// 링크 재작성이 가리키는 곳. 한 군데만 고치면 되도록 상수로 둔다.
+const REPO_BLOB = 'https://github.com/iyulab/code-beaker/blob/main';
+const REPO_TREE = 'https://github.com/iyulab/code-beaker/tree/main';
+
 // 동기화할 문서 매핑
 // key: 소스 파일, value: 타겟 경로 및 메타데이터
 const DOCS_MAPPING = {
@@ -102,6 +106,10 @@ function transformMarkdown(content, sourceFile) {
   transformed = transformed.replace(/</g, '&lt;');
   transformed = transformed.replace(/>/g, '&gt;');
 
+  // 링크 재작성은 코드가 «보호된 상태에서» 한다 — 코드 예제 안의 경로가 링크로
+  // 오인돼 재작성되지 않게 하려는 것이다.
+  transformed = rewriteLinks(transformed, sourceFile);
+
   // 코드 블록 복원
   transformed = transformed.replace(
     /__CODE_BLOCK_(\d+)__/g,
@@ -114,50 +122,64 @@ function transformMarkdown(content, sourceFile) {
     (match, index) => inlineCodes[parseInt(index)]
   );
 
-  // 다양한 문서 링크 패턴을 GitHub로 변환
-  // (Docusaurus는 docs/ 내부의 문서만 자동 링크 처리)
-
-  // claudedocs/ 링크 → GitHub
-  transformed = transformed.replace(
-    /\[([^\]]+)\]\(claudedocs\/([^)]+)\)/g,
-    '[$1](https://github.com/iyulab/code-beaker/blob/main/claudedocs/$2)'
-  );
-
-  // docs/ 경로 포함한 링크 → GitHub
-  transformed = transformed.replace(
-    /\[([^\]]+)\]\(docs\/([^)]+)\)/g,
-    '[$1](https://github.com/iyulab/code-beaker/blob/main/docs/$2)'
-  );
-
-  // Archive 링크 → GitHub
-  transformed = transformed.replace(
-    /\[([^\]]+)\]\(\.\.\/docs\/archive\/([^)]+)\)/g,
-    '[$1](https://github.com/iyulab/code-beaker/blob/main/docs/archive/$2)'
-  );
-
-  transformed = transformed.replace(
-    /\[([^\]]+)\]\(docs\/archive\/([^)]+)\)/g,
-    '[$1](https://github.com/iyulab/code-beaker/blob/main/docs/archive/$2)'
-  );
-
-  transformed = transformed.replace(
-    /\[([^\]]+)\]\(claudedocs\/archive\/([^)]+)\)/g,
-    '[$1](https://github.com/iyulab/code-beaker/blob/main/claudedocs/archive/$2)'
-  );
-
-  // 대문자로 시작하는 .md 파일 (PHASE1_COMPLETE.md 등) → GitHub
-  transformed = transformed.replace(
-    /\[([^\]]+)\]\(([A-Z][A-Z_0-9]*\.md)\)/g,
-    '[$1](https://github.com/iyulab/code-beaker/blob/main/docs/$2)'
-  );
-
-  // LICENSE 같은 루트 파일 → GitHub
-  transformed = transformed.replace(
-    /\[([^\]]+)\]\((LICENSE|README\.md|DEV_GUIDE\.md)\)/g,
-    '[$1](https://github.com/iyulab/code-beaker/blob/main/$2)'
-  );
-
   return transformed.trim();
+}
+
+/**
+ * 동기화되는 소스 파일의 «리포 상대 경로» → 이 사이트에서의 문서 경로.
+ * DOCS_MAPPING/README_MAPPING이 이미 그 대응을 갖고 있으므로 여기서 다시 적지 않는다.
+ */
+function siteRoutes() {
+  const routes = { 'README.md': README_MAPPING.target.replace(/\.md$/, '') };
+
+  for (const [source, meta] of Object.entries(DOCS_MAPPING)) {
+    routes[path.posix.join('docs', source)] = meta.target.replace(/\.md$/, '');
+  }
+
+  return routes;
+}
+
+/**
+ * 상대 링크를 이 사이트가 실제로 해석할 수 있는 곳으로 옮긴다.
+ *
+ * 이전에는 재작성할 접두어를 손으로 나열했다.
+ * 목록에 없는 접두어는 상대 링크인 채로 나가 사이트에서 404가 됐고, 빌드는 그것을
+ * 경고로만 알렸다. 그래서 규칙을 뒤집는다 — «동기화되는 문서가 아니면 전부 리포로».
+ * 나열이 없으므로 빠뜨릴 것도 없다.
+ *
+ * 절대 URL·앵커·사이트 절대경로는 그대로 둔다.
+ */
+function rewriteLinks(content, sourceFile) {
+  const routes = siteRoutes();
+  const sourceDir = path.posix.dirname(sourceFile.split(path.sep).join('/'));
+
+  return content.replace(/(!?)\[([^\]]*)\]\(([^)\s]+)\)/g, (match, bang, text, target) => {
+    if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|\/|#)/i.test(target)) {
+      return match;
+    }
+
+    const hash = target.indexOf('#');
+    const pathPart = hash === -1 ? target : target.slice(0, hash);
+    const anchor = hash === -1 ? '' : target.slice(hash);
+
+    if (!pathPart) {
+      return match;
+    }
+
+    const isDirectory = pathPart.endsWith('/');
+    const repoPath = path.posix
+      .normalize(path.posix.join(sourceDir === '.' ? '' : sourceDir, pathPart))
+      .replace(/\/$/, '');
+
+    // 이 사이트가 함께 발행하는 문서라면 사이트 안에 머무른다 — 렌더된 페이지가
+    // 있는데 원본 마크다운으로 내보낼 이유가 없다.
+    if (!bang && routes[repoPath]) {
+      return `[${text}](./${routes[repoPath]}${anchor})`;
+    }
+
+    const base = isDirectory ? REPO_TREE : REPO_BLOB;
+    return `${bang}[${text}](${base}/${repoPath}${anchor})`;
+  });
 }
 
 /**
@@ -174,7 +196,8 @@ async function syncFile(sourceFile, targetFile, metadata) {
     let content = await fs.readFile(sourcePath, 'utf-8');
 
     // 내용 변환
-    content = transformMarkdown(content, sourceFile);
+    // 링크는 리포 루트 기준으로 풀어야 하므로 소스의 리포 상대 경로를 넘긴다.
+    content = transformMarkdown(content, path.posix.join('docs', sourceFile));
 
     // Frontmatter 추가
     const frontmatter = generateFrontmatter(metadata);

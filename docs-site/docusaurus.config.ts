@@ -19,8 +19,16 @@ const config: Config = {
   projectName: 'code-beaker',
   trailingSlash: false,
 
-  onBrokenLinks: 'warn',
-  onBrokenMarkdownLinks: 'warn',
+  // 링크가 깨진 채로 문서 사이트가 배포되는 것을 막는다. 경고로 두면 빌드가 초록인 채
+  // 독자만 404를 만나고, 언제부터 그랬는지도 남지 않는다.
+  onBrokenLinks: 'throw',
+
+  markdown: {
+    hooks: {
+      // v4에서 제거되는 최상위 `onBrokenMarkdownLinks` 대신 여기에 둔다.
+      onBrokenMarkdownLinks: 'throw',
+    },
+  },
 
   i18n: {
     defaultLocale: 'en',
