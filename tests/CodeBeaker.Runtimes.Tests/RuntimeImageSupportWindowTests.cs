@@ -38,8 +38,11 @@ public sealed class RuntimeImageSupportWindowTests
         ("javascript", "24", new DateOnly(2028, 4, 30),
             "Node.js 24 end-of-life, per endoflife.date as recorded on 2026-09-07"),
         ("go", "1.27", new DateOnly(2027, 8, 31),
-            "estimate, not an announced date: Go supports the two most recent majors and "
-            + "releases roughly every six months, so 1.27 loses support when 1.29 ships"),
+            "estimate, not an announced date: Go supports the two most recent majors, so 1.27 "
+            + "loses support when 1.29 ships, and no date for that is published. Derived from "
+            + "1.27 having shipped on 2026-08-19 (the day 1.25 lost support, which is what a "
+            + "1.27 release means) and a release cadence of roughly six months, putting 1.29 "
+            + "around 2027-08 — re-derive it the same way rather than extending it blindly"),
         ("csharp", "10.0", new DateOnly(2028, 11, 14),
             ".NET 10 end-of-life, per endoflife.date as recorded on 2026-09-07"),
     ];
