@@ -169,7 +169,9 @@ in minor releases, and this file is where a consumer finds out about them.
   `execute_code` (it is `execute`), `create_directory` (`create_dir`) and
   `sourcePath`/`destinationPath` on a copy (`source`/`destination`), and
   documented two commands that do not exist at all, `delete_file` and
-  `list_directory`. `docs/ARCHITECTURE.md` listed seven command types, naming
+  `list_directory`. Its `shell` examples also named the executable
+  `commandName`, which the server ignores — the property is `command` — so a
+  client that copied them sent a command with no executable. `docs/ARCHITECTURE.md` listed seven command types, naming
   the same two non-existent ones and omitting five real ones, and left `Python`
   out of the `RuntimeType` enum it reproduces. Every command type named in the
   documentation now exists, and the architecture document carries the table of
