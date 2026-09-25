@@ -204,6 +204,130 @@ f|9012|1698508800|./subdir/file3.txt";
 
     #endregion
 
+    #region ExecuteShellCommand Tests
+
+    [Fact]
+    public async Task Shell_WithZeroExit_Succeeds_AndCarriesTheTypedOutput()
+    {
+        // Arrange
+        SetupDockerExec("hello\n", "", exitCode: 0);
+
+        // Act
+        var result = await _executor.ExecuteAsync(
+            new ExecuteShellCommand { CommandName = "echo", Args = ["hello"] }, _testContainerId);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.Error.Should().BeNull();
+        result.Result.Should().Be(new ShellCommandOutput(0, "hello\n", ""));
+    }
+
+    [Fact]
+    public async Task Shell_WithNonZeroExit_Fails_KeepsTheOutput_AndReportsStderrAsTheError()
+    {
+        // Arrange — a failed command still ran; what it printed is what explains the failure
+        SetupDockerExec("partial\n", "boom\n", exitCode: 2);
+
+        // Act
+        var result = await _executor.ExecuteAsync(
+            new ExecuteShellCommand { CommandName = "sh", Args = ["-c", "exit 2"] }, _testContainerId);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Result.Should().Be(new ShellCommandOutput(2, "partial\n", "boom\n"));
+        result.Error.Should().Be("boom");
+    }
+
+    [Fact]
+    public async Task Shell_WithNonZeroExit_AndNoStderr_NamesTheExitCodeInTheError()
+    {
+        // Arrange
+        SetupDockerExec("", "", exitCode: 3);
+
+        // Act
+        var result = await _executor.ExecuteAsync(
+            new ExecuteShellCommand { CommandName = "false" }, _testContainerId);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Result.Should().Be(new ShellCommandOutput(3, "", ""));
+        result.Error.Should().Contain("exit code 3");
+    }
+
+    [Fact]
+    public async Task Shell_WritingToBothStreams_WithZeroExit_KeepsStderrInTheOutput_NotTheError()
+    {
+        // Arrange — stderr on a successful command is diagnostics (warnings, progress), not failure
+        SetupDockerExec("out\n", "warn\n", exitCode: 0);
+
+        // Act
+        var result = await _executor.ExecuteAsync(
+            new ExecuteShellCommand { CommandName = "sh", Args = ["-c", "echo out; echo warn >&2"] },
+            _testContainerId);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.Error.Should().BeNull();
+        result.Result.Should().Be(new ShellCommandOutput(0, "out\n", "warn\n"));
+    }
+
+    [Fact]
+    public async Task Shell_Result_SerializesAsExitCodeStdoutStderr()
+    {
+        // Arrange — this is the "result" object a JSON-RPC client receives
+        SetupDockerExec("out\n", "err\n", exitCode: 1);
+
+        // Act
+        var result = await _executor.ExecuteAsync(
+            new ExecuteShellCommand { CommandName = "sh" }, _testContainerId);
+        using var document = System.Text.Json.JsonDocument.Parse(
+            System.Text.Json.JsonSerializer.Serialize(result));
+
+        // Assert
+        var payload = document.RootElement.GetProperty("result");
+        payload.EnumerateObject().Select(p => p.Name).Should().Equal("exitCode", "stdout", "stderr");
+        payload.GetProperty("exitCode").GetInt32().Should().Be(1);
+        payload.GetProperty("stdout").GetString().Should().Be("out\n");
+        payload.GetProperty("stderr").GetString().Should().Be("err\n");
+        document.RootElement.GetProperty("success").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Shell_WhenTheDaemonReportsNoExitCode_FailsWithoutAResult()
+    {
+        // Arrange — an unknown exit code must not be reported as success (or as any exit code)
+        SetupDockerExec("out\n", "", exitCode: 0);
+        _dockerMock.Setup(x => x.Exec.InspectContainerExecAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ContainerExecInspectResponse { ExitCode = null });
+
+        // Act
+        var result = await _executor.ExecuteAsync(
+            new ExecuteShellCommand { CommandName = "echo" }, _testContainerId);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Result.Should().BeNull();
+        result.Error.Should().Contain("no exit code");
+    }
+
+    [Fact]
+    public async Task Shell_WhenTheExecCannotRun_FailsWithoutAResult()
+    {
+        // Arrange
+        SetupDockerExecFailure();
+
+        // Act
+        var result = await _executor.ExecuteAsync(
+            new ExecuteShellCommand { CommandName = "echo" }, _testContainerId);
+
+        // Assert
+        result.Success.Should().BeFalse();
+        result.Result.Should().BeNull();
+        result.Error.Should().Contain("Container exec failed");
+    }
+
+    #endregion
+
     #region DiffCommand Tests
 
     [Fact]
@@ -464,8 +588,13 @@ f|9012|1698508800|./subdir/file3.txt";
 
     #region Helper Methods
 
-    private void SetupDockerExec(string stdout, string stderr)
+    private void SetupDockerExec(string stdout, string stderr, int exitCode = 0)
     {
+        _dockerMock.Setup(x => x.Exec.InspectContainerExecAsync(
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ContainerExecInspectResponse { ExitCode = exitCode });
+
         var execResponseMock = new ContainerExecCreateResponse { ID = "exec-123" };
 
         _dockerMock.Setup(x => x.Exec.CreateContainerExecAsync(

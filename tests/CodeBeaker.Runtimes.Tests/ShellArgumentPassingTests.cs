@@ -130,8 +130,12 @@ public sealed class ShellArgumentPassingTests
             await environment.DisposeAsync();
 
             Assert.True(result.Success, result.Error);
-            Assert.NotNull(result.Result);
-            return (string)result.Result!;
+            return result.Result switch
+            {
+                ShellCommandOutput shell => shell.Stdout,
+                string output => output,
+                var other => throw new InvalidOperationException($"Unexpected result: {other}"),
+            };
         }
         finally
         {

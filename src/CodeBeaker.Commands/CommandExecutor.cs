@@ -240,15 +240,15 @@ public sealed class CommandExecutor : ICommandExecutor
 
         var output = await ReadStreamAsync(stream, cancellationToken);
 
-        // Get exit code
+        // The exec has finished once its output stream closes; the daemon holds the exit code.
+        // A missing exit code means the daemon does not consider the exec finished; reporting
+        // that as any particular exit code would turn "unknown" into success or failure.
         var inspect = await _docker.Exec.InspectContainerExecAsync(execResponse.ID, cancellationToken);
+        var exitCode = inspect.ExitCode
+            ?? throw new InvalidOperationException("The Docker daemon reported no exit code for the finished command");
 
-        return CommandResult.Ok(new
-        {
-            stdout = output.Stdout,
-            stderr = output.Stderr,
-            exitCode = inspect.ExitCode
-        });
+        return CommandResult.FromShellOutput(
+            new ShellCommandOutput((int)exitCode, output.Stdout, output.Stderr));
     }
 
     /// <summary>

@@ -182,13 +182,9 @@ public sealed class NativeProcessEnvironment(RuntimeConfig config) : IExecutionE
             var error = await stderrTask;
             stopwatch.Stop();
 
-            return new CommandResult
-            {
-                Success = _currentProcess.ExitCode == 0,
-                Result = output,
-                Error = string.IsNullOrEmpty(error) ? null : error,
-                DurationMs = (int)stopwatch.ElapsedMilliseconds,
-            };
+            return CommandResult.FromShellOutput(
+                new ShellCommandOutput(_currentProcess.ExitCode, output, error),
+                (int)stopwatch.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {

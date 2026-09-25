@@ -93,12 +93,21 @@ public sealed class SecurityEnhancedEnvironment : IExecutionEnvironment
             result = await _inner.ExecuteAsync(command, cancellationToken);
 
             // 4. Sanitize Output
-            if (_security.EnableInputValidation && result.Success)
+            // Applied whether or not the command succeeded: the limit bounds how much output a
+            // command can make the server hold and return, and a failed shell command carries
+            // its full output (and its stderr as the error) just as a successful one does.
+            if (_security.EnableInputValidation)
             {
-                if (result.Result is string resultStr)
+                result.Result = result.Result switch
                 {
-                    result.Result = InputValidator.SanitizeOutput(resultStr, _security);
-                }
+                    string resultStr => InputValidator.SanitizeOutput(resultStr, _security),
+                    ShellCommandOutput shell => shell with
+                    {
+                        Stdout = InputValidator.SanitizeOutput(shell.Stdout, _security),
+                        Stderr = InputValidator.SanitizeOutput(shell.Stderr, _security),
+                    },
+                    var other => other,
+                };
 
                 if (!string.IsNullOrEmpty(result.Error))
                 {

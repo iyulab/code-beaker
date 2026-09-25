@@ -221,11 +221,39 @@ asyncio.run(codebeaker_client())
     "result": {
       "exitCode": 0,
       "stdout": "Hello, World!\n",
-      "stderr": "",
-      "durationMs": 120
+      "stderr": ""
     },
     "error": null,
     "durationMs": 125
+  }
+}
+```
+
+`shell` 명령의 결과는 어느 런타임(Docker, Python, Node, Deno, Bun, Native)에서 실행했든 같은 형태다.
+
+- 명령이 끝까지 실행됐다면 `result` 는 항상 `{ exitCode, stdout, stderr }` 이다 — 종료 코드가 0 이 아니어도 마찬가지다.
+- `success` 는 `exitCode == 0` 과 같다. 0 이 아닌 종료 코드로 끝난 명령은 `success: false` 다.
+- `error` 는 성공이면 `null`, 실패면 그 명령의 stderr(끝의 줄바꿈 제외)다. stderr 가 비어 있으면
+  종료 코드를 밝힌 메시지(`Command failed with exit code N`)가 온다. 성공한 명령이 stderr 에 쓴
+  내용(경고 등)은 `error` 가 아니라 `result.stderr` 에만 있다.
+- 명령이 끝나지 못했다면(시간 초과, 실행 파일을 찾지 못함 등) `result` 는 `null` 이고
+  `success: false`, `error` 에 사유가 온다.
+
+0 이 아닌 종료 코드로 끝난 경우(`ls /workspace/missing`):
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "result": {
+    "success": false,
+    "result": {
+      "exitCode": 2,
+      "stdout": "",
+      "stderr": "ls: cannot access '/workspace/missing': No such file or directory\n"
+    },
+    "error": "ls: cannot access '/workspace/missing': No such file or directory",
+    "durationMs": 48
   }
 }
 ```

@@ -168,6 +168,45 @@ public sealed class SecurityIntegrationTests
         Assert.Contains("Output truncated", result.Result.ToString());
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public async Task SecurityEnhancedEnvironment_ShouldTruncateLongShellOutput_WhateverTheExitCode(int exitCode)
+    {
+        // Arrange — the output limit bounds what a command can make the server hold and send
+        // back; a command that failed can print just as much as one that succeeded.
+        var config = new SecurityConfig
+        {
+            EnableInputValidation = true,
+            MaxOutputLength = 150
+        };
+
+        var longOutput = new string('a', 300);
+        var mockEnv = CreateMockEnvironment();
+        mockEnv.Setup(e => e.ExecuteAsync(It.IsAny<Command>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(CommandResult.FromShellOutput(new ShellCommandOutput(exitCode, longOutput, longOutput)));
+
+        var secureEnv = new SecurityEnhancedEnvironment(
+            mockEnv.Object, config, new RateLimiter(config), CreateAuditLogger(config),
+            CreateLogger<SecurityEnhancedEnvironment>(), "D:\\workspace");
+
+        // Act
+        var result = await secureEnv.ExecuteAsync(
+            new ExecuteShellCommand { CommandName = "echo" }, CancellationToken.None);
+
+        // Assert
+        var output = Assert.IsType<ShellCommandOutput>(result.Result);
+        Assert.Equal(exitCode, output.ExitCode);
+        Assert.Contains("Output truncated", output.Stdout);
+        Assert.Contains("Output truncated", output.Stderr);
+        Assert.True(output.Stdout.Length < longOutput.Length);
+        Assert.True(output.Stderr.Length < longOutput.Length);
+        if (exitCode != 0)
+        {
+            Assert.Contains("Output truncated", result.Error);
+        }
+    }
+
     [Fact]
     public async Task SecurityEnhancedEnvironment_ShouldBlockInvalidFileExtension()
     {

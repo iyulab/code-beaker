@@ -70,7 +70,7 @@ public sealed class NativeProcessRuntimeTests
             });
 
             Assert.True(result.Success, result.Error);
-            Assert.NotNull(result.Result);
+            Assert.NotEmpty(Assert.IsType<ShellCommandOutput>(result.Result).Stdout);
 
             await environment.DisposeAsync();
         }
@@ -146,8 +146,7 @@ public sealed class NativeProcessRuntimeTests
                 $"i=0; while [ $i -lt 2000 ]; do echo {line}; i=$((i+1)); done"));
 
             Assert.True(result.Success, result.Error);
-            Assert.NotNull(result.Result);
-            Assert.True(((string)result.Result!).Length > 800_000);
+            Assert.True(Assert.IsType<ShellCommandOutput>(result.Result).Stdout.Length > 800_000);
 
             await environment.DisposeAsync();
         }
@@ -197,7 +196,7 @@ public sealed class NativeProcessRuntimeTests
             });
 
             Assert.True(result.Success, result.Error);
-            Assert.Equal("one two three", result.Result);
+            Assert.Equal("one two three", Assert.IsType<ShellCommandOutput>(result.Result).Stdout);
 
             await environment.DisposeAsync();
         }

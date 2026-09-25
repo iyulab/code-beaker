@@ -345,13 +345,9 @@ public sealed class BunEnvironment : IExecutionEnvironment
 
         var duration = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
-        return new CommandResult
-        {
-            Success = process.ExitCode == 0,
-            Result = string.Join("\n", stdout),
-            Error = stderr.Count > 0 ? string.Join("\n", stderr) : null,
-            DurationMs = (int)duration
-        };
+        return CommandResult.FromShellOutput(
+            new ShellCommandOutput(process.ExitCode, string.Join("\n", stdout), string.Join("\n", stderr)),
+            (int)duration);
     }
 
     private async Task<CommandResult> ExecuteWriteFileAsync(

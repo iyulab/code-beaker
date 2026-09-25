@@ -66,6 +66,42 @@ in minor releases, and this file is where a consumer finds out about them.
   was the .NET class name of an internal metadata holder (`PythonRuntime`),
   which told a client nothing; the response is now the same shape the REST
   `GET /api/language` endpoint returns.
+- **A `shell` command returns one result shape on every runtime.** The Docker
+  runtime returned an object of `stdout`, `stderr`, and `exitCode` and reported
+  every command that ran to completion as successful, whatever its exit code;
+  the Python, Node.js, Deno, Bun, and native runtimes returned standard output
+  as a bare string, put standard error in `Error` even when the command
+  succeeded, and did not expose the exit code at all. A consumer that read the
+  result as a string got nothing from a Docker session, and one that relied on
+  `Success` saw failed commands as successful there. Every runtime now returns
+  `CommandResult.Result` as the new `ShellCommandOutput` record
+  (`CodeBeaker.Commands.Models`: `ExitCode`, `Stdout`, `Stderr`; `exitCode`,
+  `stdout`, `stderr` on the wire), `Success` is `ExitCode == 0`, and `Error` is
+  `null` on success and the command's standard error on failure — or
+  `Command failed with exit code N` when it wrote nothing there. A command
+  that did not finish (a timeout, an executable that could not be started)
+  still has `Success = false`, `Result = null`, and the reason in `Error`.
+  `CommandResult.FromShellOutput` builds this result for anyone implementing a
+  runtime. What a consumer has to change depends on which shape it read:
+  - *Consumers of the non-Docker runtimes* read standard output from
+    `((ShellCommandOutput)result.Result).Stdout` instead of casting `Result` to
+    a string, and find standard error in `.Stderr` — on success it is no longer
+    copied into `Error`, which is now `null`. A JSON-RPC client reads
+    `result.stdout` instead of `result`.
+  - *Consumers of the Docker runtime* see `Success = false` (JSON-RPC
+    `success: false`) for a non-zero exit, where it used to be `true`.
+    Following from that, `ICommandExecutor.ExecuteBatchAsync` now stops at the
+    first shell command that exits non-zero, as it already did for every other
+    failed command, and the audit log records such a command as a failure at
+    `Warning` severity. The JSON shape itself is the one `docs/USAGE.md`
+    documented all along, so a JSON-RPC client that read `exitCode` rather
+    than `success` needs no change.
+  - `SecurityEnhancedEnvironment` applies the output limit
+    (`SecurityConfig.MaxOutputLength`) to both streams of a shell result, and
+    to a result and its `Error` whether or not the command succeeded. It used
+    to truncate only a string result of a successful command, so it would have
+    stopped limiting shell output altogether, and a failed command's output was
+    never limited.
 
 ### Added
 
