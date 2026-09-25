@@ -97,105 +97,13 @@ public sealed class NativeProcessEnvironment(RuntimeConfig config) : IExecutionE
         }
     }
 
-    private async Task<CommandResult> ExecuteShellAsync(ExecuteShellCommand command, CancellationToken cancellationToken)
-    {
-        var stopwatch = Stopwatch.StartNew();
-
-        try
-        {
-            _currentProcess = new Process
-            {
-                // ArgumentList, not Arguments: a joined string is re-parsed on whitespace,
-                // so any single argument that contains a space (a shell script, a path with
-                // spaces) silently reaches the child as several arguments. ArgumentList
-                // escapes each element for the platform and passes them through intact.
-                StartInfo = new ProcessStartInfo(command.CommandName, command.Args)
-                {
-                    WorkingDirectory = command.WorkingDirectory ?? config.WorkspaceDirectory,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                },
-            };
-
-            if (command.Environment is not null)
-            {
-                foreach (var (key, value) in command.Environment)
-                {
-                    _currentProcess.StartInfo.EnvironmentVariables[key] = value;
-                }
-            }
-
-            _currentProcess.Start();
-
-            // Started immediately, not after WaitForExitAsync: a child that writes enough
-            // output to fill the OS pipe buffer (~4KB on Windows) blocks on that write
-            // until someone drains the pipe. Waiting for exit first before reading either
-            // stream is the classic .NET deadlock — the child blocks on a full pipe while
-            // the parent blocks on the child ever exiting. Draining concurrently with the
-            // exit wait is what avoids it.
-            var stdoutTask = _currentProcess.StandardOutput.ReadToEndAsync(cancellationToken);
-            var stderrTask = _currentProcess.StandardError.ReadToEndAsync(cancellationToken);
-            var exitTask = _currentProcess.WaitForExitAsync(cancellationToken);
-
-            var timeout = config.ResourceLimits?.TimeoutSeconds ?? 300;
-
-            // The timeout has to cover exit AND both drains as one bounded operation, not
-            // just the exit wait: a command can launch a detached descendant that outlives
-            // it (e.g. Windows "start /b" starting a dev server) and inherits the redirected
-            // stdout/stderr pipe handles. The immediate process then exits well within the
-            // timeout, but the pipe's write end stays open for as long as that descendant
-            // keeps running — so ReadToEndAsync never sees EOF and would hang forever if the
-            // timeout only gated the exit wait.
-            var allDone = Task.WhenAll(exitTask, stdoutTask, stderrTask);
-            var winner = await Task.WhenAny(allDone, Task.Delay(TimeSpan.FromSeconds(timeout), cancellationToken));
-
-            if (winner != allDone)
-            {
-                // Kill(entireProcessTree: true) is what actually resolves both hang shapes:
-                // if the immediate process is still running, this is the same fix as before;
-                // if it already exited but a descendant lingers, this finds and kills that
-                // descendant too (by walking live processes for the recorded PID as parent),
-                // which releases the handle and is why this works even when _currentProcess
-                // itself has already exited.
-                try
-                {
-                    _currentProcess.Kill(entireProcessTree: true);
-                }
-                catch (InvalidOperationException)
-                {
-                    // Already exited by the time we got here — nothing to kill for it, but
-                    // Kill(true) still walks and kills any lingering descendants.
-                }
-
-                stopwatch.Stop();
-                return new CommandResult
-                {
-                    Success = false,
-                    Error = $"Execution timeout ({timeout}s)",
-                    DurationMs = (int)stopwatch.ElapsedMilliseconds,
-                };
-            }
-
-            var output = await stdoutTask;
-            var error = await stderrTask;
-            stopwatch.Stop();
-
-            return CommandResult.FromShellOutput(
-                new ShellCommandOutput(_currentProcess.ExitCode, output, error),
-                (int)stopwatch.ElapsedMilliseconds);
-        }
-        catch (Exception ex)
-        {
-            stopwatch.Stop();
-            return new CommandResult { Success = false, Error = ex.Message, DurationMs = (int)stopwatch.ElapsedMilliseconds };
-        }
-        finally
-        {
-            _currentProcess = null;
-        }
-    }
+    private Task<CommandResult> ExecuteShellAsync(ExecuteShellCommand command, CancellationToken cancellationToken) =>
+        ShellProcess.RunAsync(
+            command,
+            config.WorkspaceDirectory,
+            config.ResourceLimits?.TimeoutSeconds ?? ShellProcess.DefaultTimeoutSeconds,
+            process => _currentProcess = process,
+            cancellationToken);
 
     public Task<EnvironmentState> GetStateAsync(CancellationToken cancellationToken = default) => Task.FromResult(_state);
 

@@ -348,54 +348,13 @@ public sealed class NodeEnvironment : IExecutionEnvironment, IResourceMonitor
         }
     }
 
-    private async Task<CommandResult> ExecuteShellAsync(ExecuteShellCommand command, CancellationToken cancellationToken)
-    {
-        var stopwatch = Stopwatch.StartNew();
-
-        try
-        {
-            _currentProcess = new Process
-            {
-                // ArgumentList, not Arguments: a joined string is re-parsed on whitespace,
-                // so any single argument that contains a space (a shell script, a path with
-                // spaces) silently reaches the child as several arguments. ArgumentList
-                // escapes each element for the platform and passes them through intact.
-                StartInfo = new ProcessStartInfo(command.CommandName, command.Args)
-                {
-                    WorkingDirectory = _config.WorkspaceDirectory,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                }
-            };
-
-            _currentProcess.Start();
-            var output = await _currentProcess.StandardOutput.ReadToEndAsync();
-            var error = await _currentProcess.StandardError.ReadToEndAsync();
-            await _currentProcess.WaitForExitAsync(cancellationToken);
-
-            stopwatch.Stop();
-
-            return CommandResult.FromShellOutput(
-                new ShellCommandOutput(_currentProcess.ExitCode, output, error),
-                (int)stopwatch.ElapsedMilliseconds);
-        }
-        catch (Exception ex)
-        {
-            stopwatch.Stop();
-            return new CommandResult
-            {
-                Success = false,
-                Error = ex.Message,
-                DurationMs = (int)stopwatch.ElapsedMilliseconds
-            };
-        }
-        finally
-        {
-            _currentProcess = null;
-        }
-    }
+    private Task<CommandResult> ExecuteShellAsync(ExecuteShellCommand command, CancellationToken cancellationToken) =>
+        ShellProcess.RunAsync(
+            command,
+            _config.WorkspaceDirectory,
+            _config.ResourceLimits?.TimeoutSeconds ?? ShellProcess.DefaultTimeoutSeconds,
+            process => _currentProcess = process,
+            cancellationToken);
 
     private async Task<CommandResult> InstallPackagesAsync(InstallPackagesCommand command, CancellationToken cancellationToken)
     {

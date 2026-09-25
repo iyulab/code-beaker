@@ -139,6 +139,16 @@ in minor releases, and this file is where a consumer finds out about them.
 
 ### Fixed
 
+- **A shell command on the Node.js or Python runtime could hang forever.** Both
+  runtimes read standard output to its end before reading standard error, so a
+  command that wrote more to standard error than the OS pipe buffer holds (a
+  few KB) blocked on that write while the runtime waited for standard output to
+  close. They also applied no timeout to shell commands and ignored the
+  command's `workingDirectory` and `env`. Shell commands on the native, Node.js
+  and Python runtimes now run through one shared path: both streams are drained
+  together, `ResourceLimits.TimeoutSeconds` bounds the command (default 300s;
+  the process tree is killed and the result reports `Execution timeout (Ns)`),
+  and the command's working directory and environment variables are applied.
 - **The published API reference listed REST endpoints that do not exist.** It
   advertised `POST /api/execute` and `GET /api/execute/:id/status`, which the
   server has never served, and named the language endpoint `GET /api/languages`

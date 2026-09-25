@@ -132,7 +132,10 @@ public sealed class NativeProcessRuntimeTests
             {
                 Environment = "native",
                 WorkspaceDirectory = workspace,
-                ResourceLimits = new ResourceLimits { TimeoutSeconds = 15 },
+                // Generous on purpose: this test is about a deadlock, which never finishes, not
+                // about speed. A tight limit failed under parallel test load for a reason that had
+                // nothing to do with the deadlock (cmd's echo loop is slow when the machine is busy).
+                ResourceLimits = new ResourceLimits { TimeoutSeconds = 90 },
             });
 
             // ~1MB of stdout — comfortably past any OS pipe buffer size (a few KB to 64KB).
