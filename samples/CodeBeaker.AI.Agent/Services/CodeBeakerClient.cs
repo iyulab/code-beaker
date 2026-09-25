@@ -30,6 +30,12 @@ public class CodeBeakerClient : IDisposable
 
     private void HandleMessage(ResponseMessage message)
     {
+        // A binary frame carries no text, and the API only sends JSON-RPC as text.
+        if (message.Text is null)
+        {
+            return;
+        }
+
         try
         {
             var response = JsonSerializer.Deserialize<JsonRpcResponse>(message.Text);

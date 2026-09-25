@@ -1,5 +1,5 @@
-using CodeBeaker.AI.Agent.Services;
 using CodeBeaker.AI.Agent.Scenarios;
+using CodeBeaker.AI.Agent.Services;
 using DotNetEnv;
 using Serilog;
 

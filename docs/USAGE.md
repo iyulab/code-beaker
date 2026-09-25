@@ -284,8 +284,8 @@ asyncio.run(codebeaker_client())
   "result": {
     "success": true,
     "result": {
-      "content": "print('Hello, World!')",
-      "bytes": 22
+      "path": "/workspace/hello.py",
+      "content": "print('Hello, World!')"
     },
     "error": null,
     "durationMs": 35

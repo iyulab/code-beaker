@@ -79,8 +79,9 @@ public class DebugFixScenario
                     sessionId = sessionId,
                     command = new
                     {
-                        type = "execute",
-                        code = $"exec(open('{fileName}').read())"
+                        type = "shell",
+                        command = "python3",
+                        args = new[] { fileName }
                     }
                 });
 
@@ -174,14 +175,18 @@ public class DebugFixScenario
                     sessionId = sessionId,
                     command = new
                     {
-                        type = "execute",
-                        code = $"exec(open('{fileName}').read())"
+                        type = "shell",
+                        command = "python3",
+                        args = new[] { fileName }
                     }
                 });
 
+            // A shell command's result is { exitCode, stdout, stderr }; success means exit code 0
             var verifySuccess = verifyResponse?["success"]?.ToString()?.ToLower() == "true";
-            var verifyOutput = verifyResponse?["output"]?.ToString() ?? "";
-            var verifyError = verifyResponse?["error"]?.ToString() ?? "";
+            var verifyResultJson = System.Text.Json.JsonSerializer.Serialize(verifyResponse?["result"]);
+            var verifyResult = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(verifyResultJson);
+            var verifyOutput = verifyResult?["stdout"]?.ToString() ?? "";
+            var verifyError = verifyResult?["stderr"]?.ToString() ?? "";
 
             if (verifySuccess)
             {

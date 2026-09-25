@@ -149,6 +149,15 @@ in minor releases, and this file is where a consumer finds out about them.
   together, `ResourceLimits.TimeoutSeconds` bounds the command (default 300s;
   the process tree is killed and the result reports `Execution timeout (Ns)`),
   and the command's working directory and environment variables are applied.
+- **The AI agent sample did not build, and sent a command the sandbox does not
+  run.** It failed a nullability check under the repository's warnings-as-errors
+  setting, and its debug-and-fix scenario ran Python through `execute`, which a
+  Docker session does not accept, then read `stdout`/`exitCode` from a result
+  that has neither. It now runs the file as a `shell` command and reads the
+  shell result, and the sample is part of the solution, so every build compiles
+  it.
+- **`docs/USAGE.md` showed a `read_file` result of `{content, bytes}`**; the
+  result is `{path, content}`.
 - **The published API reference listed REST endpoints that do not exist.** It
   advertised `POST /api/execute` and `GET /api/execute/:id/status`, which the
   server has never served, and named the language endpoint `GET /api/languages`
