@@ -59,4 +59,27 @@ public sealed class DockerShellResultLiveTests
             }
         }
     }
+
+    /// <summary>
+    /// A shell command's reported duration is how long it ran. A consumer recording tool-call
+    /// traces from this runtime saw 0ms on every command.
+    /// </summary>
+    [SkippableFact]
+    public async Task ShellCommand_ReportsHowLongItRan()
+    {
+        var reason = await DockerTestHelper.GetSkipReasonAsync();
+        Skip.If(reason is not null, reason);
+
+        var environment = await new DockerRuntime().CreateEnvironmentAsync(
+            new RuntimeConfig { Environment = "python" });
+
+        await using (environment)
+        {
+            var result = await environment.ExecuteAsync(
+                new ExecuteShellCommand { CommandName = "sh", Args = ["-c", "sleep 1"] });
+
+            Assert.True(result.Success, result.Error);
+            Assert.InRange(result.DurationMs, 900, 30_000);
+        }
+    }
 }
