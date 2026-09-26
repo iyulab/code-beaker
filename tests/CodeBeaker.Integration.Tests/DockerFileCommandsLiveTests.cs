@@ -178,6 +178,70 @@ public sealed class DockerFileCommandsLiveTests
         Assert.Contains("no-such-dir", missing.Error);
     }
 
+    [SkippableFact]
+    public async Task CreateDirectory_MakesNestedDirectories_AndNonRecursiveFailsWithoutAParent()
+    {
+        await using var environment = await CreateEnvironmentAsync();
+
+        var nested = await environment.ExecuteAsync(new CreateDirectoryCommand { Path = "a/b/c" });
+        var orphan = await environment.ExecuteAsync(new CreateDirectoryCommand { Path = "x/y", Recursive = false });
+
+        Assert.True(nested.Success, nested.Error);
+        Assert.True((await ShellAsync(environment, "test", "-d", "a/b/c")).Success);
+        Assert.False(orphan.Success);
+        Assert.False(string.IsNullOrEmpty(orphan.Error));
+    }
+
+    [SkippableFact]
+    public async Task CopyFile_Copies_KeepsAnExistingDestinationWithoutOverwrite_AndFailsOnAMissingSource()
+    {
+        await using var environment = await CreateEnvironmentAsync();
+        await environment.ExecuteAsync(new WriteFileCommand { Path = "src.txt", Content = "source" });
+        await environment.ExecuteAsync(new WriteFileCommand { Path = "kept.txt", Content = "kept" });
+
+        var copy = await environment.ExecuteAsync(new CopyFileCommand { Source = "src.txt", Destination = "copy.txt" });
+        var noOverwrite = await environment.ExecuteAsync(new CopyFileCommand { Source = "src.txt", Destination = "kept.txt", Overwrite = false });
+        var missing = await environment.ExecuteAsync(new CopyFileCommand { Source = "absent.txt", Destination = "other.txt" });
+
+        Assert.True(copy.Success, copy.Error);
+        Assert.Equal(Sha256(Encoding.UTF8.GetBytes("source")), await Sha256InContainerAsync(environment, "copy.txt"));
+        Assert.True(noOverwrite.Success, noOverwrite.Error);
+        Assert.Equal(Sha256(Encoding.UTF8.GetBytes("kept")), await Sha256InContainerAsync(environment, "kept.txt"));
+        Assert.False(missing.Success);
+        Assert.Contains("absent.txt", missing.Error);
+    }
+
+    [SkippableFact]
+    public async Task DiffThenApplyPatch_BetweenFilesInTheContainer_RewritesTheTarget()
+    {
+        await using var environment = await CreateEnvironmentAsync();
+        await environment.ExecuteAsync(new WriteFileCommand { Path = "before.txt", Content = "one\ntwo\nthree\n" });
+        await environment.ExecuteAsync(new WriteFileCommand { Path = "after.txt", Content = "one\nTWO\nthree\n" });
+
+        var diff = await environment.ExecuteAsync(new DiffCommand { OriginalPath = "before.txt", ModifiedPath = "after.txt" });
+        Assert.True(diff.Success, diff.Error);
+        var diffResult = Assert.IsType<DiffResult>(diff.Result);
+        Assert.False(diffResult.Identical);
+
+        var patch = await environment.ExecuteAsync(new ApplyPatchCommand { Patch = diffResult.Diff, TargetPath = "before.txt" });
+
+        Assert.True(patch.Success, patch.Error);
+        Assert.Equal(Sha256(Encoding.UTF8.GetBytes("one\nTWO\nthree\n")), await Sha256InContainerAsync(environment, "before.txt"));
+    }
+
+    [SkippableFact]
+    public async Task Diff_WithAMissingFile_Fails()
+    {
+        await using var environment = await CreateEnvironmentAsync();
+
+        var diff = await environment.ExecuteAsync(new DiffCommand { OriginalPath = "absent.txt", ModifiedContent = "x" });
+
+        Assert.False(diff.Success);
+    }
+
+    private static Task<CommandResult> ShellAsync(IExecutionEnvironment environment, string command, params string[] args) =>
+        environment.ExecuteAsync(new ExecuteShellCommand { CommandName = command, Args = [.. args] });
+
     private static async Task<IExecutionEnvironment> CreateEnvironmentAsync()
     {
         var reason = await DockerTestHelper.GetSkipReasonAsync();

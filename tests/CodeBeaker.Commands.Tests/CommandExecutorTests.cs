@@ -591,6 +591,11 @@ f|9012|1698508800|./subdir/file3.txt";
 
         patchResult.Should().NotBeNull();
         patchResult!.HunksFailed.Should().BeGreaterThan(0);
+
+        // A patch that did not apply is a failed command, not a successful one carrying a
+        // failure inside its result.
+        result.Success.Should().BeFalse();
+        result.Error.Should().StartWith("Failed to apply patch");
     }
 
     #endregion

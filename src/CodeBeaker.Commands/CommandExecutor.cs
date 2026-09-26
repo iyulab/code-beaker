@@ -588,7 +588,21 @@ public sealed class CommandExecutor : ICommandExecutor
                 }
             }
 
-            return CommandResult.Ok(patchResult);
+            if (patchResult.Success)
+            {
+                return CommandResult.Ok(patchResult);
+            }
+
+            // A patch that does not apply is a failed command, as a shell command's non-zero exit
+            // is; the patch result still travels with it so the caller can see which hunks failed.
+            return new CommandResult
+            {
+                Success = false,
+                Result = patchResult,
+                Error = patchResult.Errors.Count > 0
+                    ? $"Failed to apply patch: {string.Join("; ", patchResult.Errors)}"
+                    : $"Failed to apply patch: {patchResult.HunksFailed} hunk(s) did not apply"
+            };
         }
         catch (Exception ex)
         {

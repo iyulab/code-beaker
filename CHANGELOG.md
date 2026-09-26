@@ -176,6 +176,11 @@ in minor releases, and this file is where a consumer finds out about them.
   file now fails them too instead of being treated as empty.
   `copy_file` with `overwrite: false` now leaves an existing destination alone
   (it previously overwrote it).
+- **`apply_patch` reported success for a patch that did not apply.** The
+  command succeeded whenever it ran, with the failure only inside its result
+  (`hunksFailed`). It now fails, with the patch result still attached so the
+  failed hunks remain visible. The usage guide's example also pointed
+  `targetPath` at a directory; it is the file to patch.
 - **`list_files` on the Docker runtime returned an empty tree.** `find` prints
   the starting directory as its first line; the parser took that line as a new
   node and replaced the root with it, so the tree it returned never had

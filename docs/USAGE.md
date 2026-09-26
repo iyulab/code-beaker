@@ -882,15 +882,13 @@ for (let i = 0; i < 10; i++) {
 ```json
 {
   "type": "apply_patch",
-  "patch": "--- a/file.py
-+++ b/file.py
-@@ -1 +1 @@
--old
-+new
-",
-  "targetPath": "/workspace"
+  "patch": "--- a/file.py\n+++ b/file.py\n@@ -1 +1 @@\n-old\n+new\n",
+  "targetPath": "/workspace/file.py"
 }
 ```
+
+`targetPath`는 패치할 **파일**이다(생략하면 패치 헤더의 파일명을 쓴다). 적용되지 않는 헝크가 있으면
+명령이 실패하고, `result`에는 어느 헝크가 실패했는지 담긴 패치 결과가 그대로 실린다. 대상 파일이 없어도 실패한다.
 
 > **런타임마다 지원하는 타입이 다르다.** 지원하지 않는 조합은 거절되며, 모든 런타임이
 > 처리하는 것은 `shell` 뿐이다. 조합표는 `ARCHITECTURE.md` 의 「Command 타입 시스템」 절에 있다.
