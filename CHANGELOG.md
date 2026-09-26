@@ -108,6 +108,12 @@ in minor releases, and this file is where a consumer finds out about them.
 
 ### Added
 
+- **`write_file` carries binary content.** `WriteFileCommand` has an
+  `encoding` property: `Utf8` (the default, and what every existing request
+  means) writes `content` as text; `Base64` decodes `content` and writes the
+  exact bytes, so an archive or any other non-text input can be placed in a
+  session. Content that is not valid base64 fails the command without writing
+  anything. Supported wherever `write_file` is (Docker, Deno, Bun).
 - **`LanguageCatalog` (`CodeBeaker.Runtimes`) and `LanguageDescriptor`
   (`CodeBeaker.Core.Models`)** — the single source of supported languages:
   canonical name, aliases, display name, sandbox image version, and Docker
@@ -149,6 +155,29 @@ in minor releases, and this file is where a consumer finds out about them.
 
 ### Fixed
 
+- **`write_file` on the Docker runtime reported success without writing the
+  file.** It piped the content into `tee` and returned as soon as the bytes were
+  sent, without closing the process's input, waiting for it to finish, or
+  checking its exit code — measured against a real container, nothing landed
+  at all, whatever the size. Writes now go through `dd`, which closes on the end
+  of input, and the command succeeds only when the process exits 0: a path the
+  sandbox user cannot write to fails with the error instead of reporting
+  success. `Append` mode, previously ignored, now appends. Missing parent
+  directories are created, as the Deno and Bun runtimes already did. A path
+  beginning with `-` is written as a path, not read as an option.
+- **`read_file`, `create_dir` and `copy_file` on the Docker runtime reported
+  success whatever happened.** A missing file was read as empty content, and a
+  failed `mkdir` or `cp` was reported as done. All three now fail with the
+  command's error output when it exits non-zero, and pass paths after `--`.
+  `diff` and `apply_patch` read their input files the same way, so a missing
+  file now fails them too instead of being treated as empty.
+  `copy_file` with `overwrite: false` now leaves an existing destination alone
+  (it previously overwrote it).
+- **The Python and Node.js sandbox images could not write to `/workspace`.**
+  The directory was created by `WORKDIR` as root, and the images then switch to
+  a non-root user, so any file written into the working directory failed with
+  a permission error. Both images now hand the directory to their sandbox user,
+  as the C# and Go images already did.
 - **A shell command on the Node.js or Python runtime could hang forever.** Both
   runtimes read standard output to its end before reading standard error, so a
   command that wrote more to standard error than the OS pipe buffer holds (a

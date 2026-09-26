@@ -12,6 +12,10 @@ namespace CodeBeaker.Commands.Interfaces;
 /// </remarks>
 public interface IContainerExecStreamIO
 {
+    /// <summary>
+    /// Writes <paramref name="content"/> to the exec's stdin, then closes stdin so the process
+    /// sees the end of its input.
+    /// </summary>
     Task WriteInputAsync(MultiplexedStream stream, byte[] content, CancellationToken cancellationToken);
 
     Task<(string Stdout, string Stderr)> ReadOutputAsync(MultiplexedStream stream, CancellationToken cancellationToken);

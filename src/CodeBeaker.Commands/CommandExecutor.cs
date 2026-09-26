@@ -93,30 +93,42 @@ public sealed class CommandExecutor : ICommandExecutor
         string containerId,
         CancellationToken cancellationToken)
     {
+        byte[] bytes;
         try
         {
-            // Use 'tee' command to write file (no shell parsing overhead)
-            var execConfig = new ContainerExecCreateParameters
+            bytes = command.GetContentBytes();
+        }
+        catch (FormatException)
+        {
+            return CommandResult.Fail("Failed to write file: content is not valid base64");
+        }
+
+        try
+        {
+            // Missing parent directories are created, as the in-process runtimes do.
+            var slash = command.Path.LastIndexOf('/');
+            if (slash > 0)
             {
-                Cmd = new[] { "tee", command.Path },
-                AttachStdin = true,
-                AttachStdout = true,
-                AttachStderr = true,
-                WorkingDir = "/workspace"
-            };
+                var mkdir = await RunExecAsync(containerId, ["mkdir", "-p", "--", command.Path[..slash]], cancellationToken);
+                if (mkdir.ExitCode != 0)
+                {
+                    return Failure("write file", mkdir);
+                }
+            }
 
-            var execResponse = await _docker.Exec.CreateContainerExecAsync(containerId, execConfig, cancellationToken);
+            // dd rather than tee: tee echoes everything it writes to its stdout, and a write larger
+            // than the pipe buffer stalls once nobody reads that. dd writes only the file, and of=
+            // is an operand, so a path beginning with "-" is still taken as a path.
+            var args = new List<string> { "dd", $"of={command.Path}", "bs=64K", "status=none" };
+            if (command.Mode == FileWriteMode.Append)
+            {
+                args.AddRange(["oflag=append", "conv=notrunc"]);
+            }
 
-            using var stream = await _docker.Exec.StartContainerExecAsync(
-                execResponse.ID,
-                new ContainerExecStartParameters { TTY = false },
-                cancellationToken);
-
-            // Write content to stdin
-            var bytes = Encoding.UTF8.GetBytes(command.Content);
-            await _streamIO.WriteInputAsync(stream, bytes, cancellationToken);
-
-            return CommandResult.Ok(new { path = command.Path, bytes = bytes.Length });
+            var write = await RunExecAsync(containerId, [.. args], cancellationToken, stdin: bytes);
+            return write.ExitCode == 0
+                ? CommandResult.Ok(new { path = command.Path, bytes = bytes.Length })
+                : Failure("write file", write);
         }
         catch (Exception ex)
         {
@@ -134,24 +146,10 @@ public sealed class CommandExecutor : ICommandExecutor
     {
         try
         {
-            var execConfig = new ContainerExecCreateParameters
-            {
-                Cmd = new[] { "cat", command.Path },
-                AttachStdout = true,
-                AttachStderr = true,
-                WorkingDir = "/workspace"
-            };
-
-            var execResponse = await _docker.Exec.CreateContainerExecAsync(containerId, execConfig, cancellationToken);
-
-            using var stream = await _docker.Exec.StartContainerExecAsync(
-                execResponse.ID,
-                new ContainerExecStartParameters { TTY = false },
-                cancellationToken);
-
-            var output = await ReadStreamAsync(stream, cancellationToken);
-
-            return CommandResult.Ok(new { path = command.Path, content = output.Stdout });
+            var read = await RunExecAsync(containerId, ["cat", "--", command.Path], cancellationToken);
+            return read.ExitCode == 0
+                ? CommandResult.Ok(new { path = command.Path, content = read.Stdout })
+                : Failure("read file", read);
         }
         catch (Exception ex)
         {
@@ -167,24 +165,14 @@ public sealed class CommandExecutor : ICommandExecutor
         string containerId,
         CancellationToken cancellationToken)
     {
-        var args = command.Recursive
-            ? new[] { "mkdir", "-p", command.Path }
-            : new[] { "mkdir", command.Path };
+        string[] args = command.Recursive
+            ? ["mkdir", "-p", "--", command.Path]
+            : ["mkdir", "--", command.Path];
 
-        var execConfig = new ContainerExecCreateParameters
-        {
-            Cmd = args,
-            AttachStdout = true,
-            AttachStderr = true,
-            WorkingDir = "/workspace"
-        };
-
-        var execResponse = await _docker.Exec.CreateContainerExecAsync(containerId, execConfig, cancellationToken);
-        using var stream = await _docker.Exec.StartContainerExecAsync(execResponse.ID, new ContainerExecStartParameters { TTY = false }, cancellationToken);
-
-        var output = await ReadStreamAsync(stream, cancellationToken);
-
-        return CommandResult.Ok(new { path = command.Path });
+        var mkdir = await RunExecAsync(containerId, args, cancellationToken);
+        return mkdir.ExitCode == 0
+            ? CommandResult.Ok(new { path = command.Path })
+            : Failure("create directory", mkdir);
     }
 
     /// <summary>
@@ -195,24 +183,14 @@ public sealed class CommandExecutor : ICommandExecutor
         string containerId,
         CancellationToken cancellationToken)
     {
-        var args = command.Overwrite
-            ? new[] { "cp", "-f", command.Source, command.Destination }
-            : new[] { "cp", command.Source, command.Destination };
+        string[] args = command.Overwrite
+            ? ["cp", "-f", "--", command.Source, command.Destination]
+            : ["cp", "-n", "--", command.Source, command.Destination];
 
-        var execConfig = new ContainerExecCreateParameters
-        {
-            Cmd = args,
-            AttachStdout = true,
-            AttachStderr = true,
-            WorkingDir = "/workspace"
-        };
-
-        var execResponse = await _docker.Exec.CreateContainerExecAsync(containerId, execConfig, cancellationToken);
-        using var stream = await _docker.Exec.StartContainerExecAsync(execResponse.ID, new ContainerExecStartParameters { TTY = false }, cancellationToken);
-
-        var output = await ReadStreamAsync(stream, cancellationToken);
-
-        return CommandResult.Ok(new { source = command.Source, destination = command.Destination });
+        var copy = await RunExecAsync(containerId, args, cancellationToken);
+        return copy.ExitCode == 0
+            ? CommandResult.Ok(new { source = command.Source, destination = command.Destination })
+            : Failure("copy file", copy);
     }
 
     /// <summary>
@@ -223,20 +201,46 @@ public sealed class CommandExecutor : ICommandExecutor
         string containerId,
         CancellationToken cancellationToken)
     {
-        var cmd = new List<string> { command.CommandName };
-        cmd.AddRange(command.Args);
+        var shell = await RunExecAsync(
+            containerId,
+            [command.CommandName, .. command.Args],
+            cancellationToken,
+            workingDirectory: command.WorkingDirectory,
+            environment: command.Environment?.Select(kv => $"{kv.Key}={kv.Value}").ToList());
 
+        return CommandResult.FromShellOutput(
+            new ShellCommandOutput((int)shell.ExitCode, shell.Stdout, shell.Stderr));
+    }
+
+    /// <summary>
+    /// Runs one process in the container and waits for it to exit. With <paramref name="stdin"/>,
+    /// that content is written to the process and its stdin closed before the output is read.
+    /// </summary>
+    private async Task<ExecOutcome> RunExecAsync(
+        string containerId,
+        string[] cmd,
+        CancellationToken cancellationToken,
+        byte[]? stdin = null,
+        string? workingDirectory = null,
+        IList<string>? environment = null)
+    {
         var execConfig = new ContainerExecCreateParameters
         {
-            Cmd = cmd.ToArray(),
+            Cmd = cmd,
+            AttachStdin = stdin is not null,
             AttachStdout = true,
             AttachStderr = true,
-            WorkingDir = command.WorkingDirectory ?? "/workspace",
-            Env = command.Environment?.Select(kv => $"{kv.Key}={kv.Value}").ToList() ?? []
+            WorkingDir = workingDirectory ?? "/workspace",
+            Env = environment ?? []
         };
 
         var execResponse = await _docker.Exec.CreateContainerExecAsync(containerId, execConfig, cancellationToken);
         using var stream = await _docker.Exec.StartContainerExecAsync(execResponse.ID, new ContainerExecStartParameters { TTY = false }, cancellationToken);
+
+        if (stdin is not null)
+        {
+            await _streamIO.WriteInputAsync(stream, stdin, cancellationToken);
+        }
 
         var output = await ReadStreamAsync(stream, cancellationToken);
 
@@ -247,9 +251,15 @@ public sealed class CommandExecutor : ICommandExecutor
         var exitCode = inspect.ExitCode
             ?? throw new InvalidOperationException("The Docker daemon reported no exit code for the finished command");
 
-        return CommandResult.FromShellOutput(
-            new ShellCommandOutput((int)exitCode, output.Stdout, output.Stderr));
+        return new ExecOutcome(exitCode, output.Stdout, output.Stderr);
     }
+
+    private static CommandResult Failure(string action, ExecOutcome outcome) =>
+        CommandResult.Fail(outcome.Stderr.Trim() is { Length: > 0 } error
+            ? $"Failed to {action}: {error}"
+            : $"Failed to {action}: exited with code {outcome.ExitCode}");
+
+    private sealed record ExecOutcome(long ExitCode, string Stdout, string Stderr);
 
     /// <summary>
     /// Read multiplexed Docker stream

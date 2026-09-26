@@ -10,8 +10,11 @@ namespace CodeBeaker.Commands;
 /// </summary>
 public sealed class DockerContainerExecStreamIO : IContainerExecStreamIO
 {
-    public Task WriteInputAsync(MultiplexedStream stream, byte[] content, CancellationToken cancellationToken)
-        => stream.WriteAsync(content, 0, content.Length, cancellationToken);
+    public async Task WriteInputAsync(MultiplexedStream stream, byte[] content, CancellationToken cancellationToken)
+    {
+        await stream.WriteAsync(content, 0, content.Length, cancellationToken);
+        stream.CloseWrite();
+    }
 
     public async Task<(string Stdout, string Stderr)> ReadOutputAsync(MultiplexedStream stream, CancellationToken cancellationToken)
     {

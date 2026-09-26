@@ -624,6 +624,7 @@ f|9012|1698508800|./subdir/file3.txt";
     private void SetupDockerExecForFileRead(string path, string content)
     {
         var execResponseMock = new ContainerExecCreateResponse { ID = $"exec-read-{path}" };
+        SetupExitCode(execResponseMock.ID, 0);
 
         _dockerMock.Setup(x => x.Exec.CreateContainerExecAsync(
                 _testContainerId,
@@ -648,11 +649,12 @@ f|9012|1698508800|./subdir/file3.txt";
     private void SetupDockerExecForFileWrite(string path)
     {
         var execResponseMock = new ContainerExecCreateResponse { ID = $"exec-write-{path}" };
+        SetupExitCode(execResponseMock.ID, 0);
 
         _dockerMock.Setup(x => x.Exec.CreateContainerExecAsync(
                 _testContainerId,
                 It.Is<ContainerExecCreateParameters>(p =>
-                    p.Cmd.Contains("tee") && p.Cmd.Contains(path)),
+                    p.Cmd.Contains("dd") && p.Cmd.Contains($"of={path}")),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(execResponseMock);
 
@@ -667,6 +669,11 @@ f|9012|1698508800|./subdir/file3.txt";
         _streamIOMock.Setup(io => io.ReadOutputAsync(stream, It.IsAny<CancellationToken>()))
             .ReturnsAsync(("", ""));
     }
+
+    // Every file command reads the exit code back from the daemon once the exec's output ends.
+    private void SetupExitCode(string execId, int exitCode) =>
+        _dockerMock.Setup(x => x.Exec.InspectContainerExecAsync(execId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ContainerExecInspectResponse { ExitCode = exitCode });
 
     private void SetupDockerExecFailure()
     {

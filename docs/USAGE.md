@@ -765,6 +765,21 @@ for (let i = 0; i < 10; i++) {
 - `Create`: 새 파일 생성 (기존 파일 덮어쓰기)
 - `Append`: 기존 파일에 추가
 
+**인코딩** (`encoding`, 생략하면 `Utf8`):
+- `Utf8`: `content`를 텍스트로 쓴다
+- `Base64`: `content`를 base64로 디코드한 바이트를 그대로 쓴다 — 아카이브 같은 바이너리 입력을 세션에 넣을 때. 올바른 base64가 아니면 아무것도 쓰지 않고 실패한다
+
+```json
+{
+  "type": "write_file",
+  "path": "/workspace/input.tar",
+  "content": "dXN0YXIAMDA...",
+  "encoding": "Base64"
+}
+```
+
+없는 상위 디렉터리는 만들어진다. 샌드박스 사용자가 쓸 수 없는 경로면 명령이 실패한다.
+
 ### 2. ReadFileCommand
 
 **파일 읽기**

@@ -343,10 +343,13 @@ public sealed class DenoEnvironment : IExecutionEnvironment
             {
                 case FileWriteMode.Create:
                 case FileWriteMode.Overwrite:
-                    await File.WriteAllTextAsync(filePath, command.Content, cancellationToken);
+                    await File.WriteAllBytesAsync(filePath, command.GetContentBytes(), cancellationToken);
                     break;
                 case FileWriteMode.Append:
-                    await File.AppendAllTextAsync(filePath, command.Content, cancellationToken);
+                    await using (var file = new FileStream(filePath, FileMode.Append, FileAccess.Write))
+                    {
+                        await file.WriteAsync(command.GetContentBytes(), cancellationToken);
+                    }
                     break;
             }
 
