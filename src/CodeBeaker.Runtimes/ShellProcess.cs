@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using CodeBeaker.Commands.Models;
 
@@ -77,13 +78,20 @@ internal static class ShellProcess
                 // Kill(entireProcessTree: true) resolves both hang shapes: it kills the process
                 // if it is still running, and also finds and kills a lingering descendant that
                 // holds the pipe open, even when the immediate process has already exited.
+                // Best effort: the command has already run out of time, and that is what the
+                // result reports whether or not every process could be stopped. Kill(true) walks
+                // the live process table, so under load a process can exit, or be terminating,
+                // while it is being killed — documented as Win32Exception ("the process is
+                // terminating") and AggregateException ("not all processes in the descendant
+                // tree could be terminated"). Letting either escape turned a timeout into an
+                // unrelated error message.
                 try
                 {
                     process.Kill(entireProcessTree: true);
                 }
-                catch (InvalidOperationException)
+                catch (Exception ex) when (ex is InvalidOperationException or Win32Exception or AggregateException)
                 {
-                    // Already exited — Kill(true) still walked and killed any descendants.
+                    // InvalidOperationException: already exited — descendants were still walked.
                 }
 
                 stopwatch.Stop();
