@@ -27,7 +27,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props', '**/Directory.Build.props', 'global.json') }}
         restore-keys: |
           ${{ runner.os }}-nuget-
 
@@ -230,6 +230,11 @@ jobs:
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
+    # Uploading the Trivy SARIF writes code-scanning results; declared rather than left to the
+    # repository's default token permissions.
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
     - name: Checkout code
@@ -271,7 +276,7 @@ jobs:
         output: 'trivy-results.sarif'
 
     - name: Upload Trivy results to GitHub Security
-      uses: github/codeql-action/upload-sarif@v3
+      uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
@@ -312,6 +317,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-and-test, integration-tests, code-quality, security-scan]
     if: startsWith(github.ref, 'refs/tags/v')
+    # Creating the release writes to the repository. Declared here rather than left to the
+    # repository's default token permissions, which can be read-only.
+    permissions:
+      contents: write
 
     steps:
     - name: Checkout code
@@ -333,7 +342,7 @@ jobs:
         tar -czf codebeaker-${{ github.ref_name }}-linux-x64.tar.gz -C ./publish .
 
     - name: Create GitHub Release
-      uses: softprops/action-gh-release@de2c0eb89ae2a093876385947365aca7b0e5f844 # v0.1.15
+      uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
       with:
         files: |
           codebeaker-${{ github.ref_name }}-linux-x64.tar.gz
