@@ -12,6 +12,9 @@ in minor releases, and this file is where a consumer finds out about them.
 
 ### Changed
 
+- **Dependencies moved to their current releases**: `StackExchange.Redis` 3.3.1
+  and `Microsoft.Extensions.Hosting.Abstractions` 10.0.12 (both reach a consumer
+  of `CodeBeaker.Core` transitively).
 - **All packages now target `net10.0`** (previously `net8.0`). .NET 8 leaves
   support in November 2026, and the framework-following dependencies
   (`Microsoft.Extensions.Hosting.Abstractions`, `Serilog.AspNetCore`) move to
@@ -118,6 +121,13 @@ in minor releases, and this file is where a consumer finds out about them.
 
 ### Removed
 
+- **`DEV_GUIDE.md` and six scripts** (`setup-local-dev.ps1`/`.sh`,
+  `start-dev.ps1`, `simulate-pipeline.ps1`, `monitor-pipeline.ps1`,
+  `test-examples.ps1`). They described a Worker project, a file queue and a REST
+  execution endpoint that no longer exist, and failed when followed. The README
+  and `docs/` cover setting up, running and testing the current server;
+  `scripts/run-all-tests.ps1` and `scripts/test-watch.ps1` now include the
+  Commands tests they used to skip.
 - **`IRuntime`, `BaseRuntime`, `PythonRuntime`, `JavaScriptRuntime`,
   `GoRuntime`, `CSharpRuntime` (root `CodeBeaker.Runtimes` namespace), and
   `RuntimeRegistry`.** They held only a language name and a Docker image but
