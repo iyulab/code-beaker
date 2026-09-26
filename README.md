@@ -359,6 +359,7 @@ Skipped       9 — Deno and Bun runtime tests, skipped when those
 ```bash
 # CI Tests (Unit Tests - Fast)
 dotnet test tests/CodeBeaker.Core.Tests
+dotnet test tests/CodeBeaker.Commands.Tests
 dotnet test tests/CodeBeaker.Runtimes.Tests
 
 # Local Tests (Integration Tests - Requires Docker)
@@ -373,12 +374,7 @@ dotnet test --filter "FullyQualifiedName~Security"
 
 ### GitHub Actions Integration Tests
 
-Integration tests can be run manually on GitHub Actions:
-1. Go to Actions tab → "Integration Tests (Manual)"
-2. Click "Run workflow"
-3. Select runtime to test (or "all")
-
-> **Note**: Integration tests may have limited functionality in CI due to Docker constraints. For best results, run locally.
+The CI workflow's `integration-tests` job runs the integration suite on pushes and pull requests to `main` and `develop`: it builds the four runtime images first and fails if a test skips instead of running. `scripts/run-all-tests.ps1` runs the same suites locally (`-SkipIntegration` without Docker).
 
 ## 성능
 

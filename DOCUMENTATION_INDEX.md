@@ -7,7 +7,6 @@
 - [README.md](README.md) — 프로젝트 개요, 빠른 시작, 구조
 - [docs/USAGE.md](docs/USAGE.md) — WebSocket API 사용법과 예제
 - [docs/API.md](docs/API.md) — 서버가 제공하는 HTTP 경로 전량(WebSocket 엔드포인트·REST·health·metrics)
-- [DEV_GUIDE.md](DEV_GUIDE.md) — 개발 환경 설정과 기여 절차
 - [CHANGELOG.md](CHANGELOG.md) — 릴리스별 변경 사항(깨는 변경 포함)
 
 ## 설계와 운영

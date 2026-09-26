@@ -36,6 +36,27 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host ""
 
+# 1b. 단위 테스트 - Commands
+Write-Host "1b. Commands 단위 테스트 실행 중..." -ForegroundColor Yellow
+
+$commandsTestCmd = "dotnet test tests/CodeBeaker.Commands.Tests/ --configuration Release --logger 'console;verbosity=normal' --logger 'trx;LogFileName=commands-test-results.trx' --results-directory ./TestResults"
+
+if ($WithCoverage) {
+    $commandsTestCmd += " --collect:'XPlat Code Coverage'"
+}
+
+Invoke-Expression $commandsTestCmd
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "   ❌ Commands 테스트 실패" -ForegroundColor Red
+    $testsFailed = $true
+    $testResults += @{ Name = "Commands Tests"; Status = "Failed" }
+} else {
+    Write-Host "   ✅ Commands 테스트 통과" -ForegroundColor Green
+    $testResults += @{ Name = "Commands Tests"; Status = "Passed" }
+}
+Write-Host ""
+
 # 2. 단위 테스트 - Runtimes
 Write-Host "2. Runtime 단위 테스트 실행 중..." -ForegroundColor Yellow
 

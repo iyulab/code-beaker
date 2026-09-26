@@ -1,7 +1,7 @@
 # 파일 변경 감지 시 자동으로 테스트를 실행하는 스크립트
 
 param(
-    [ValidateSet("Core", "Runtime", "Integration", "All")]
+    [ValidateSet("Core", "Commands", "Runtime", "Integration", "All")]
     [string]$Target = "All"
 )
 
@@ -17,9 +17,10 @@ Write-Host ""
 # 타겟별 테스트 프로젝트 경로 설정
 $testProjects = switch ($Target) {
     "Core" { @("tests/CodeBeaker.Core.Tests/") }
+    "Commands" { @("tests/CodeBeaker.Commands.Tests/") }
     "Runtime" { @("tests/CodeBeaker.Runtimes.Tests/") }
     "Integration" { @("tests/CodeBeaker.Integration.Tests/") }
-    "All" { @("tests/CodeBeaker.Core.Tests/", "tests/CodeBeaker.Runtimes.Tests/") }
+    "All" { @("tests/CodeBeaker.Core.Tests/", "tests/CodeBeaker.Commands.Tests/", "tests/CodeBeaker.Runtimes.Tests/") }
 }
 
 # FileSystemWatcher 설정
