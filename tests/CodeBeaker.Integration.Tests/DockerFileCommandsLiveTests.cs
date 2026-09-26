@@ -3,20 +3,43 @@ using System.Text;
 using CodeBeaker.Commands.Models;
 using CodeBeaker.Core.Interfaces;
 using CodeBeaker.Integration.Tests.TestHelpers;
+using CodeBeaker.Runtimes;
 using CodeBeaker.Runtimes.Docker;
 using Xunit;
 
 namespace CodeBeaker.Integration.Tests;
 
 /// <summary>
-/// <see cref="WriteFileCommand"/> against a real container: what lands in the file is exactly
-/// what was sent, whatever its size, and the command reports success only once the file is
-/// complete. A mock of the Docker client cannot show this — the content crosses a real exec
+/// The Docker runtime's file commands against a real container. For <see cref="WriteFileCommand"/>:
+/// what lands in the file is exactly what was sent, whatever its size, and the command reports
+/// success only once the file is complete. For every command: a failure is reported as one. A mock of the Docker client cannot show this — the content crosses a real exec
 /// stdin stream, and the failure modes (a writer blocked on output nobody reads, a result
 /// returned before the writer has finished) only exist on the real stream.
 /// </summary>
-public sealed class DockerWriteFileLiveTests
+public sealed class DockerFileCommandsLiveTests
 {
+    public static TheoryData<string> Languages() => [.. LanguageCatalog.Names];
+
+    /// <summary>
+    /// Every sandbox image hands its working directory to the non-root user it runs as. The
+    /// Python and Node.js images once created <c>/workspace</c> as root and then switched user,
+    /// so nothing could be written there.
+    /// </summary>
+    [SkippableTheory]
+    [MemberData(nameof(Languages))]
+    public async Task WriteFile_IntoTheWorkingDirectory_WorksInEverySandboxImage(string language)
+    {
+        var reason = await DockerTestHelper.GetSkipReasonAsync();
+        Skip.If(reason is not null, reason);
+
+        await using var environment = await new DockerRuntime().CreateEnvironmentAsync(new RuntimeConfig { Environment = language });
+
+        var write = await environment.ExecuteAsync(new WriteFileCommand { Path = "probe.txt", Content = language });
+
+        Assert.True(write.Success, write.Error);
+        Assert.Equal(Sha256(Encoding.UTF8.GetBytes(language)), await Sha256InContainerAsync(environment, "probe.txt"));
+    }
+
     [SkippableFact]
     public async Task WriteFile_LargerThanAPipeBuffer_LandsIntact()
     {
@@ -138,6 +161,21 @@ public sealed class DockerWriteFileLiveTests
 
         Assert.True(write.Success, write.Error);
         Assert.Equal(Sha256(Encoding.UTF8.GetBytes("data")), await Sha256InContainerAsync(environment, "./--version"));
+    }
+
+    [SkippableFact]
+    public async Task ListFiles_ReturnsWhatIsThere_AndFailsOnAMissingDirectory()
+    {
+        await using var environment = await CreateEnvironmentAsync();
+        await environment.ExecuteAsync(new WriteFileCommand { Path = "tree/a.txt", Content = "a" });
+
+        var listed = await environment.ExecuteAsync(new ListFilesCommand { Path = "tree" });
+        var missing = await environment.ExecuteAsync(new ListFilesCommand { Path = "no-such-dir" });
+
+        Assert.True(listed.Success, listed.Error);
+        Assert.Contains("a.txt", System.Text.Json.JsonSerializer.Serialize(listed.Result));
+        Assert.False(missing.Success);
+        Assert.Contains("no-such-dir", missing.Error);
     }
 
     private static async Task<IExecutionEnvironment> CreateEnvironmentAsync()

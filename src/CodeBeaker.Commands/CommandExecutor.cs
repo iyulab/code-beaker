@@ -119,7 +119,14 @@ public sealed class CommandExecutor : ICommandExecutor
             // dd rather than tee: tee echoes everything it writes to its stdout, and a write larger
             // than the pipe buffer stalls once nobody reads that. dd writes only the file, and of=
             // is an operand, so a path beginning with "-" is still taken as a path.
-            var args = new List<string> { "dd", $"of={command.Path}", "bs=64K", "status=none" };
+            // dd reads exactly the content's length and exits rather than waiting for the end of
+            // its input: an exec's stdin closed right after it starts does not reliably reach the
+            // process as end-of-file, and a writer waiting for it never finishes.
+            var args = new List<string>
+            {
+                "dd", $"of={command.Path}", "bs=64K", "status=none",
+                "iflag=fullblock,count_bytes", $"count={bytes.Length.ToString(CultureInfo.InvariantCulture)}"
+            };
             if (command.Mode == FileWriteMode.Append)
             {
                 args.AddRange(["oflag=append", "conv=notrunc"]);
@@ -280,29 +287,14 @@ public sealed class CommandExecutor : ICommandExecutor
     {
         try
         {
-            // Build find command for Docker container
-            var findArgs = BuildFindArgs(command);
-
-            var execConfig = new ContainerExecCreateParameters
+            var find = await RunExecAsync(containerId, [.. BuildFindArgs(command)], cancellationToken);
+            if (find.ExitCode != 0)
             {
-                Cmd = findArgs,
-                AttachStdout = true,
-                AttachStderr = true,
-                WorkingDir = "/workspace"
-            };
-
-            var execResponse = await _docker.Exec.CreateContainerExecAsync(containerId, execConfig, cancellationToken);
-            using var stream = await _docker.Exec.StartContainerExecAsync(execResponse.ID, new ContainerExecStartParameters { TTY = false }, cancellationToken);
-
-            var output = await ReadStreamAsync(stream, cancellationToken);
-
-            if (!string.IsNullOrEmpty(output.Stderr))
-            {
-                return CommandResult.Fail($"Failed to list files: {output.Stderr}");
+                return Failure("list files", find);
             }
 
             // Parse find output and build tree
-            var tree = ParseFindOutput(output.Stdout, command.Path);
+            var tree = ParseFindOutput(find.Stdout, command.Path);
 
             return CommandResult.Ok(new { tree = tree });
         }
@@ -356,17 +348,21 @@ public sealed class CommandExecutor : ICommandExecutor
     }
 
     /// <summary>
-    /// Parse find output into tree structure
+    /// Parse find output into tree structure. The paths are the container's, so they are split
+    /// on '/' here rather than with <see cref="Path"/>, whose separator is the host's.
     /// </summary>
-    private FileTreeNode ParseFindOutput(string output, string rootPath)
+    private static FileTreeNode ParseFindOutput(string output, string rootPath)
     {
         var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        var fileMap = new Dictionary<string, FileTreeNode>();
+        var fileMap = new Dictionary<string, FileTreeNode>(StringComparer.Ordinal);
+
+        // find prints the starting point first, exactly as given, then each entry below it.
+        var rootKey = TrimTrailingSlash(rootPath);
 
         // Create root node
         var root = new FileTreeNode
         {
-            Name = rootPath == "." ? "." : Path.GetFileName(rootPath),
+            Name = rootKey == "." ? "." : PosixFileName(rootKey),
             Path = rootPath,
             Type = FileEntryType.Directory,
             Size = 0,
@@ -374,33 +370,44 @@ public sealed class CommandExecutor : ICommandExecutor
             Children = new List<FileTreeNode>()
         };
 
-        fileMap[rootPath] = root;
+        fileMap[rootKey] = root;
 
         foreach (var line in lines)
         {
-            var parts = line.Split('|');
+            // The path is the last field and may itself contain '|'.
+            var parts = line.Split('|', 4);
             if (parts.Length != 4) continue;
 
             var type = parts[0] == "d" ? FileEntryType.Directory : FileEntryType.File;
-            var size = long.TryParse(parts[1], out var s) ? s : 0;
-            var mtimeSeconds = double.TryParse(parts[2], out var mt) ? mt : 0;
-            var path = parts[3];
+            var size = long.TryParse(parts[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var s) ? s : 0;
+            var mtimeSeconds = double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out var mt) ? mt : 0;
+            var modified = DateTimeOffset.FromUnixTimeSeconds((long)mtimeSeconds).UtcDateTime;
+            var path = TrimTrailingSlash(parts[3]);
+
+            if (path == rootKey)
+            {
+                // The starting point itself: it is the root, not a child of it.
+                root.Size = size;
+                root.Modified = modified;
+                continue;
+            }
 
             var node = new FileTreeNode
             {
-                Name = Path.GetFileName(path),
+                Name = PosixFileName(path),
                 Path = path,
                 Type = type,
                 Size = size,
-                Modified = DateTimeOffset.FromUnixTimeSeconds((long)mtimeSeconds).DateTime,
+                Modified = modified,
                 Children = type == FileEntryType.Directory ? new List<FileTreeNode>() : null
             };
 
             fileMap[path] = node;
 
-            // Add to parent's children
-            var parentPath = Path.GetDirectoryName(path);
-            if (!string.IsNullOrEmpty(parentPath) && fileMap.TryGetValue(parentPath, out var parent))
+            // Add to parent's children; find lists a directory before what is in it.
+            var slash = path.LastIndexOf('/');
+            var parentPath = slash > 0 ? path[..slash] : slash == 0 ? "/" : null;
+            if (parentPath is not null && fileMap.TryGetValue(parentPath, out var parent))
             {
                 parent.Children?.Add(node);
             }
@@ -408,6 +415,10 @@ public sealed class CommandExecutor : ICommandExecutor
 
         return root;
     }
+
+    private static string TrimTrailingSlash(string path) => path.Length > 1 ? path.TrimEnd('/') : path;
+
+    private static string PosixFileName(string path) => path[(path.LastIndexOf('/') + 1)..];
 
     /// <summary>
     /// Execute DiffCommand - Generate unified diff

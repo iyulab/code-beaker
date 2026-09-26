@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CodeBeaker.Commands.Interfaces;
 using CodeBeaker.Commands.Models;
 using CodeBeaker.Commands.Utilities;
@@ -61,10 +62,18 @@ f|9012|1698508800|./subdir/file3.txt";
         // Act
         var result = await _executor.ExecuteAsync(command, _testContainerId);
 
-        // Assert
+        // Assert — find prints the starting point first; it is the root, not a child of it,
+        // and entries hang under their parent by the container's '/' whatever the host OS.
         result.Should().NotBeNull();
         result.Success.Should().BeTrue();
-        result.Result.Should().NotBeNull();
+        using var document = JsonDocument.Parse(JsonSerializer.Serialize(result.Result));
+        var tree = document.RootElement.GetProperty("tree");
+        tree.GetProperty("path").GetString().Should().Be(".");
+        tree.GetProperty("children").EnumerateArray().Select(c => c.GetProperty("name").GetString())
+            .Should().Equal("file1.txt", "file2.txt", "subdir");
+        var subdir = tree.GetProperty("children")[2];
+        subdir.GetProperty("children").EnumerateArray().Select(c => c.GetProperty("path").GetString())
+            .Should().Equal("./subdir/file3.txt");
     }
 
     [Fact]
@@ -97,7 +106,7 @@ f|9012|1698508800|./subdir/file3.txt";
             Path = "/nonexistent"
         };
 
-        SetupDockerExec("", "find: '/nonexistent': No such file or directory");
+        SetupDockerExec("", "find: '/nonexistent': No such file or directory", exitCode: 1);
 
         // Act
         var result = await _executor.ExecuteAsync(command, _testContainerId);

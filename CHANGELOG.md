@@ -159,8 +159,11 @@ in minor releases, and this file is where a consumer finds out about them.
   file.** It piped the content into `tee` and returned as soon as the bytes were
   sent, without closing the process's input, waiting for it to finish, or
   checking its exit code — measured against a real container, nothing landed
-  at all, whatever the size. Writes now go through `dd`, which closes on the end
-  of input, and the command succeeds only when the process exits 0: a path the
+  at all, whatever the size. Writes now go through `dd`, told the exact number
+  of bytes to read so it finishes without depending on the end of its input (an
+  exec's stdin closed right after it starts does not reliably arrive as
+  end-of-file — observed as an occasional hang), and the command succeeds only
+  when the process exits 0: a path the
   sandbox user cannot write to fails with the error instead of reporting
   success. `Append` mode, previously ignored, now appends. Missing parent
   directories are created, as the Deno and Bun runtimes already did. A path
@@ -173,6 +176,13 @@ in minor releases, and this file is where a consumer finds out about them.
   file now fails them too instead of being treated as empty.
   `copy_file` with `overwrite: false` now leaves an existing destination alone
   (it previously overwrote it).
+- **`list_files` on the Docker runtime returned an empty tree.** `find` prints
+  the starting directory as its first line; the parser took that line as a new
+  node and replaced the root with it, so the tree it returned never had
+  children. Paths were also split with the host's path separator, so on a
+  Windows host no entry found its parent even below the root. The starting
+  directory now stays the root, container paths are split on `/`, and a
+  failed `find` is judged by its exit code.
 - **The Python and Node.js sandbox images could not write to `/workspace`.**
   The directory was created by `WORKDIR` as root, and the images then switch to
   a non-root user, so any file written into the working directory failed with
