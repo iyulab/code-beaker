@@ -20,18 +20,24 @@ updates:
       microsoft-extensions:
         patterns:
           - "Microsoft.Extensions.*"
+    # Each rule blocks only what is actually a decision, so fixes inside a line still
+    # arrive; ignoring a package outright hides its patch releases too.
     ignore:
       # FluentAssertions moved to a paid commercial license in 8.0.0; staying on
-      # the last Apache-2.0 line is a licensing decision, not a maintenance one,
+      # the last Apache-2.0 line (7.x) is a licensing decision, not a maintenance one,
       # so it is made deliberately rather than by an automated bump.
       - dependency-name: "FluentAssertions"
-      # Same test-platform migration trap as elsewhere: the 4.x visualstudio runner
-      # belongs to the xunit v3 line (this repo is on v2), which requires
-      # Microsoft.Testing.Platform, and the coverlet collector is replaced rather
-      # than upgraded when leaving VSTest.
+        versions: [">= 8.0.0"]
+      # Same test-platform migration trap as elsewhere: these belong to the xunit v3 /
+      # Microsoft.Testing.Platform line past a certain version (this repo is on v2 with
+      # VSTest), and the coverlet collector is replaced rather than upgraded when
+      # leaving VSTest. The visualstudio runner's 3.x still runs xunit v2; 4.x does not.
       - dependency-name: "xunit.runner.visualstudio"
+        versions: [">= 4.0.0"]
       - dependency-name: "Microsoft.NET.Test.Sdk"
+        update-types: ["version-update:semver-major"]
       - dependency-name: "coverlet.collector"
+        update-types: ["version-update:semver-major"]
 
   # The sandbox runtime images are published for anyone to pull, so the language
   # generation each one is built from is a shipped artifact rather than a local

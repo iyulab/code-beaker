@@ -45,9 +45,9 @@ public sealed class RuntimeImageCatalogSyncTests
     /// directory would publish the wrong contents under the right name — both surface
     /// only at runtime.
     ///
-    /// The fact is restated in three places outside the catalog, so each gets checked:
-    /// the CI build steps, the tag-push job that puts the images on GHCR, and the
-    /// integration workflow that builds them for its own run.
+    /// The fact is restated in two places outside the catalog, so each gets checked:
+    /// the CI build steps (which the integration-tests job runs against) and the
+    /// tag-push job that puts the images on GHCR.
     /// </summary>
     [Theory]
     [InlineData("python")]
@@ -68,9 +68,6 @@ public sealed class RuntimeImageCatalogSyncTests
 
         PublishMatrixPairs().Should().Contain((suffix, path),
             "the publish-runtime-images matrix is what puts '{0}' on GHCR", image);
-
-        IntegrationWorkflowPairs().Should().Contain((image, path),
-            "the integration workflow builds its own copy of '{0}'", image);
     }
 
     /// <summary>CI build steps — a <c>context:</c> line followed by its <c>tags:</c> line.</summary>
@@ -80,10 +77,6 @@ public sealed class RuntimeImageCatalogSyncTests
     /// <summary>The tag-push job's matrix — a <c>- name:</c> line followed by its <c>path:</c> line.</summary>
     private static IReadOnlyList<(string Name, string Path)> PublishMatrixPairs() =>
         Pairs(RuntimeImageFiles.ReadWorkflow("ci.yml"), @"-\s*name:\s*(?<a>\S+)\s*\r?\n\s*path:\s*(?<b>\S+)");
-
-    /// <summary>The integration workflow — <c>docker build -t &lt;image&gt; &lt;path&gt;</c>.</summary>
-    private static IReadOnlyList<(string Image, string Path)> IntegrationWorkflowPairs() =>
-        Pairs(RuntimeImageFiles.ReadWorkflow("integration-tests.yml"), @"docker build -t (?<a>\S+) (?<b>\S+)");
 
     private static IReadOnlyList<(string, string)> Pairs(string workflow, string pattern)
     {
