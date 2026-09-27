@@ -29,17 +29,17 @@
 
   <!-- Tests -->
   <ItemGroup>
-    <PackageVersion Include="coverlet.collector" Version="6.0.4" />
+    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
     <!-- FluentAssertions stays on the 7.x line deliberately: 7.x is the last Apache-2.0
          line and 8.0.0 moved to a paid commercial license, so moving to 8 is a licensing
          decision rather than routine maintenance. Tooling that reports "outdated" cannot
          see that. -->
     <PackageVersion Include="FluentAssertions" Version="7.2.2" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
     <PackageVersion Include="Moq" Version="4.21.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.0" />
     <PackageVersion Include="Xunit.SkippableFact" Version="1.5.85" />
   </ItemGroup>
 

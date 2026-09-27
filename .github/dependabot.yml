@@ -28,16 +28,6 @@ updates:
       # so it is made deliberately rather than by an automated bump.
       - dependency-name: "FluentAssertions"
         versions: [">= 8.0.0"]
-      # Same test-platform migration trap as elsewhere: these belong to the xunit v3 /
-      # Microsoft.Testing.Platform line past a certain version (this repo is on v2 with
-      # VSTest), and the coverlet collector is replaced rather than upgraded when
-      # leaving VSTest. The visualstudio runner's 3.x still runs xunit v2; 4.x does not.
-      - dependency-name: "xunit.runner.visualstudio"
-        versions: [">= 4.0.0"]
-      - dependency-name: "Microsoft.NET.Test.Sdk"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "coverlet.collector"
-        update-types: ["version-update:semver-major"]
 
   # The sandbox runtime images are published for anyone to pull, so the language
   # generation each one is built from is a shipped artifact rather than a local
