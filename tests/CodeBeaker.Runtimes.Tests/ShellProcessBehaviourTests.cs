@@ -51,7 +51,9 @@ public sealed class ShellProcessBehaviourTests
             "ping -n 30 127.0.0.1 >nul",
             "sleep 30"));
 
-        Assert.False(result.Success);
+        // The message carries the whole result: this has failed intermittently under load
+        // without reproducing on re-run, and a bare boolean failure left nothing to go on.
+        Assert.False(result.Success, $"Expected a timeout, got a successful result: {result.Result}");
         Assert.Equal("Execution timeout (2s)", result.Error);
         Assert.InRange(result.DurationMs, 1_000, 20_000);
     }
